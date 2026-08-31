@@ -1,0 +1,8 @@
+node_modules
+.nuxt
+.output
+node_modules/.cache
+.env
+*.log
+*.tsbuildinfo
+prisma/dev.db

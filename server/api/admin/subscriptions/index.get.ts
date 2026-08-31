@@ -1,0 +1,1 @@
+import{requireAdmin}from"../../../utils/admin";import{db}from"../../../utils/db";export default defineEventHandler(async event=>{await requireAdmin(event);return{subscriptions:await db.subscription.findMany({include:{user:{select:{name:true,email:true}},plan:true},orderBy:{createdAt:"desc"},take:100}),plans:await db.plan.findMany({where:{isActive:true}})}});

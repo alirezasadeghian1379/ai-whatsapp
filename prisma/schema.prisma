@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  phone String? @unique
+  passwordHash String
+  role String @default("USER")
+  status String @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  subscriptions Subscription[]
+  orders Order[]
+  whatsappSessions WhatsAppSession[]
+  contacts Contact[]
+  conversations Conversation[]
+  webhooks Webhook[]
+  aiConfigurations AIConfiguration[]
+  usages Usage[]
+  auditLogs AuditLog[]
+}
+
+model Plan {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  description String?
+  price Decimal
+  durationDays Int
+  maxWhatsAppConnections Int
+  maxMessages Int
+  maxWebhooks Int
+  maxAIRequests Int
+  maxContacts Int
+  features Json
+  isActive Boolean @default(true)
+  sortOrder Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  subscriptions Subscription[]
+  orders Order[]
+}
+
+model Subscription {
+  id String @id @default(cuid())
+  userId String
+  planId String
+  status String @default("PENDING")
+  startsAt DateTime?
+  endsAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  plan Plan @relation(fields:[planId],references:[id])
+  @@index([userId,status])
+}
+
+model Order {
+  id String @id @default(cuid())
+  userId String
+  planId String
+  amount Decimal
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  plan Plan @relation(fields:[planId],references:[id])
+  payments Payment[]
+  @@index([userId,status])
+}
+
+model Payment {
+  id String @id @default(cuid())
+  orderId String
+  provider String
+  authority String? @unique
+  reference String? @unique
+  amount Decimal
+  status String
+  metadata Json?
+  createdAt DateTime @default(now())
+  order Order @relation(fields:[orderId],references:[id],onDelete:Cascade)
+}
+
+model WhatsAppSession {
+  id String @id @default(cuid())
+  userId String
+  externalId String @unique
+  phoneNumber String?
+  displayName String?
+  status String @default("CONNECTING")
+  provider String
+  connectedAt DateTime?
+  lastSeenAt DateTime?
+  metadata Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  conversations Conversation[]
+  @@index([userId,status])
+}
+
+model Contact {
+  id String @id @default(cuid())
+  userId String
+  name String?
+  phone String
+  whatsappId String?
+  profileImage String?
+  tags Json @default("[]")
+  notes String?
+  lastInteractionAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  conversations Conversation[]
+  @@unique([userId,phone])
+  @@index([userId,name])
+}
+
+model Conversation {
+  id String @id @default(cuid())
+  userId String
+  sessionId String
+  contactId String
+  isPinned Boolean @default(false)
+  isArchived Boolean @default(false)
+  unreadCount Int @default(0)
+  lastMessageAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  session WhatsAppSession @relation(fields:[sessionId],references:[id],onDelete:Cascade)
+  contact Contact @relation(fields:[contactId],references:[id],onDelete:Cascade)
+  messages Message[]
+  @@unique([sessionId,contactId])
+  @@index([userId,lastMessageAt])
+}
+
+model Message {
+  id String @id @default(cuid())
+  conversationId String
+  externalId String? @unique
+  direction String
+  type String @default("text")
+  body String?
+  mediaUrl String?
+  status String @default("QUEUED")
+  sentAt DateTime?
+  createdAt DateTime @default(now())
+  conversation Conversation @relation(fields:[conversationId],references:[id],onDelete:Cascade)
+  @@index([conversationId,createdAt])
+}
+
+model Webhook {
+  id String @id @default(cuid())
+  userId String
+  name String
+  url String
+  events Json
+  secretEncrypted String
+  status String @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  deliveries WebhookDelivery[]
+  @@index([userId,status])
+}
+
+model WebhookDelivery {
+  id String @id @default(cuid())
+  webhookId String
+  event String
+  requestBody Json
+  responseBody String?
+  httpStatus Int?
+  durationMs Int?
+  attempt Int @default(1)
+  nextRetryAt DateTime?
+  deliveredAt DateTime?
+  createdAt DateTime @default(now())
+  webhook Webhook @relation(fields:[webhookId],references:[id],onDelete:Cascade)
+  @@index([webhookId,createdAt])
+}
+
+model AIConfiguration {
+  id String @id @default(cuid())
+  userId String
+  provider String
+  model String
+  apiKeyEncrypted String?
+  systemPrompt String
+  temperature Float @default(0.5)
+  maxTokens Int @default(500)
+  autoReply Boolean @default(false)
+  delaySeconds Int @default(0)
+  fallbackMessage String?
+  isEnabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@index([userId,isEnabled])
+}
+
+model Usage {
+  id String @id @default(cuid())
+  userId String
+  periodStart DateTime
+  periodEnd DateTime
+  messagesSent Int @default(0)
+  messagesReceived Int @default(0)
+  aiRequests Int @default(0)
+  webhookDeliveries Int @default(0)
+  contacts Int @default(0)
+  whatsappSessions Int @default(0)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@unique([userId,periodStart])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  action String
+  entity String?
+  entityId String?
+  ipAddress String?
+  userAgent String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  user User? @relation(fields:[userId],references:[id],onDelete:SetNull)
+  @@index([userId,createdAt])
+  @@index([action,createdAt])
+}
+
+model SystemSetting {
+  id String @id @default(cuid())
+  key String @unique
+  value Json
+  isSecret Boolean @default(false)
+  updatedAt DateTime @updatedAt
+}
