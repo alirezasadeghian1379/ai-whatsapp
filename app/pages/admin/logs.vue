@@ -1,1 +1,12 @@
-<script setup lang="ts">definePageMeta({layout:"admin",middleware:"admin"});const{data}=await useFetch<any>("/api/admin/logs");</script><template><div><PageHeader title="گزارش فعالیت" description="Audit log عملیات مدیریتی"/><section class="surface overflow-hidden"><div v-for="l in data?.logs" :key="l.id" class="grid gap-2 border-b p-4 sm:grid-cols-4"><b>{{l.action}}</b><span>{{l.user?.name||'سیستم'}}</span><code>{{l.entity}} / {{l.entityId}}</code><small>{{new Date(l.createdAt).toLocaleString()}}</small></div></section></div></template>
+<script setup lang="ts">definePageMeta({layout: "admin", middleware: "admin"});
+const {data} = await useFetch<any>("/api/admin/logs");</script>
+<template>
+  <div>
+    <PageHeader title="گزارش فعالیت" description="Audit log عملیات مدیریتی"/>
+    <section class="surface overflow-hidden">
+      <div v-for="l in data?.logs" :key="l.id" class="grid gap-2 border-b p-4 sm:grid-cols-4">
+        <b>{{ l.action }}</b><span>{{ l.user?.name || 'سیستم' }}</span><code>{{ l.entity }} /
+        {{ l.entityId }}</code><small>{{ new Date(l.createdAt).toLocaleString() }}</small></div>
+    </section>
+  </div>
+</template>

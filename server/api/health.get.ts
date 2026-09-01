@@ -1,1 +1,1 @@
-export default defineEventHandler(()=>({status:"ok",runtime:"node",timestamp:new Date().toISOString()}))
+export default defineEventHandler(() => ({status: "ok", runtime: "node", timestamp: new Date().toISOString()}))

@@ -1,1 +1,35 @@
-import{createHash}from"node:crypto";import{hash}from"bcryptjs";import{z}from"zod";import{db}from"../../utils/db";const schema=z.object({token:z.string().min(20),password:z.string().min(8).max(72),confirmPassword:z.string()}).refine(x=>x.password===x.confirmPassword,{message:"تکرار رمز عبور مطابقت ندارد."});export default defineEventHandler(async event=>{const p=schema.safeParse(await readBody(event));if(!p.success)throw createError({statusCode:422,statusMessage:p.error.issues[0]?.message||"اطلاعات معتبر نیست."});const tokenHash=createHash("sha256").update(p.data.token).digest("hex"),record=await db.passwordResetToken.findFirst({where:{tokenHash,usedAt:null,expiresAt:{gt:new Date()}}});if(!record)throw createError({statusCode:400,statusMessage:"لینک بازیابی نامعتبر یا منقضی شده است."});await db.$transaction([db.user.update({where:{id:record.userId},data:{passwordHash:await hash(p.data.password,12)}}),db.passwordResetToken.update({where:{id:record.id},data:{usedAt:new Date()}}),db.auditLog.create({data:{userId:record.userId,action:"auth.password.reset",entity:"User",entityId:record.userId}})]);return{success:true}});
+import {createHash} from "node:crypto";
+import {hash} from "bcryptjs";
+import {z} from "zod";
+import {db} from "../../utils/db";
+
+const schema = z.object({
+    token: z.string().min(20),
+    password: z.string().min(8).max(72),
+    confirmPassword: z.string()
+}).refine(x => x.password === x.confirmPassword, {message: "تکرار رمز عبور مطابقت ندارد."});
+export default defineEventHandler(async event => {
+    const p = schema.safeParse(await readBody(event));
+    if (!p.success) throw createError({
+        statusCode: 422,
+        statusMessage: p.error.issues[0]?.message || "اطلاعات معتبر نیست."
+    });
+    const tokenHash = createHash("sha256").update(p.data.token).digest("hex"),
+        record = await db.passwordResetToken.findFirst({where: {tokenHash, usedAt: null, expiresAt: {gt: new Date()}}});
+    if (!record) throw createError({statusCode: 400, statusMessage: "لینک بازیابی نامعتبر یا منقضی شده است."});
+    await db.$transaction([db.user.update({
+        where: {id: record.userId},
+        data: {passwordHash: await hash(p.data.password, 12)}
+    }), db.passwordResetToken.update({
+        where: {id: record.id},
+        data: {usedAt: new Date()}
+    }), db.auditLog.create({
+        data: {
+            userId: record.userId,
+            action: "auth.password.reset",
+            entity: "User",
+            entityId: record.userId
+        }
+    })]);
+    return {success: true}
+});

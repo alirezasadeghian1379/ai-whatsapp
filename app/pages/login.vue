@@ -1,8 +1,56 @@
 <script setup lang="ts">
-definePageMeta({layout:"auth"});
-const {tr}=useAppPreferences(),route=useRoute();
-const form=reactive({identity:"",password:"",remember:false});
-const pending=ref(false),error=ref("");
-async function submit(){pending.value=true;error.value="";try{const{user}=await $fetch<any>("/api/auth/login",{method:"POST",body:form});const requested=typeof route.query.redirect==="string"&&route.query.redirect.startsWith("/")?route.query.redirect:null;await navigateTo(requested||(["ADMIN","SUPER_ADMIN"].includes(user.role)?"/admin":"/dashboard"))}catch(e:any){error.value=e?.data?.statusMessage||tr("ورود ناموفق بود.","Sign in failed.")}finally{pending.value=false}}
+definePageMeta({layout: "auth"});
+const {tr} = useAppPreferences(), route = useRoute();
+const form = reactive({identity: "", password: "", remember: false});
+const pending = ref(false), error = ref("");
+
+async function submit() {
+  pending.value = true;
+  error.value = "";
+  try {
+    const {user} = await $fetch<any>("/api/auth/login", {method: "POST", body: form});
+    const requested = typeof route.query.redirect === "string" && route.query.redirect.startsWith("/") && !route.query.redirect.startsWith("//") ? route.query.redirect : null;
+    await navigateTo(requested || (["ADMIN", "SUPER_ADMIN"].includes(user.role) ? "/admin" : "/dashboard"))
+  } catch (e: any) {
+    error.value = e?.data?.statusMessage || tr("ورود ناموفق بود.", "Sign in failed.")
+  } finally {
+    pending.value = false
+  }
+}
 </script>
-<template><form @submit.prevent="submit"><span class="badge bg-brand-50 text-brand-700">{{tr('ورود امن','Secure sign in')}}</span><h1 class="mt-4 text-3xl font-black">{{tr('خوش آمدید 👋','Welcome back 👋')}}</h1><p class="muted mt-2 mb-8">{{tr('برای ادامه وارد حساب همراه‌چت شوید.','Sign in to continue to Hamrah Chat.')}}</p><div v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{{error}}</div><div class="mb-4"><label class="label" for="identity">{{tr('ایمیل یا شماره موبایل','Email or phone')}}</label><input id="identity" v-model="form.identity" class="input" required autocomplete="username" placeholder="admin@example.com"></div><div class="mb-4"><label class="label" for="password">{{tr('رمز عبور','Password')}}</label><input id="password" v-model="form.password" class="input" required minlength="8" type="password" autocomplete="current-password" :placeholder="tr('حداقل ۸ کاراکتر','At least 8 characters')"></div><div class="mb-6 flex items-center justify-between text-xs text-slate-500"><label class="flex items-center gap-2"><input v-model="form.remember" type="checkbox" class="accent-brand-600">{{tr('مرا به خاطر بسپار','Remember me')}}</label><NuxtLink to="/forgot-password" class="font-bold text-brand-600">{{tr('فراموشی رمز عبور','Forgot password?')}}</NuxtLink></div><button class="btn btn-primary w-full py-3.5" :disabled="pending">{{pending?tr('در حال ورود...','Signing in...'):tr('ورود به حساب','Sign in')}}</button><p class="mt-6 text-center text-sm text-slate-500">{{tr('حساب ندارید؟','No account?')}} <NuxtLink to="/register" class="font-bold text-brand-600">{{tr('رایگان ثبت‌نام کنید','Create one free')}}</NuxtLink></p></form></template>
+<template>
+  <form @submit.prevent="submit"><span
+      class="badge bg-brand-50 text-brand-700">{{ tr('ورود امن', 'Secure sign in') }}</span>
+    <h1 class="mt-4 text-3xl font-black">{{ tr('خوش آمدید 👋', 'Welcome back 👋') }}</h1>
+    <p class="muted mt-2 mb-8">
+      {{ tr('برای ادامه وارد حساب همراه‌چت شوید.', 'Sign in to continue to Hamrah Chat.') }}</p>
+    <div v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{{ error }}</div>
+    <div class="mb-4"><label class="label"
+                             for="identity">{{ tr('ایمیل یا شماره موبایل', 'Email or phone') }}</label><input
+        id="identity" v-model="form.identity" class="input" required autocomplete="username"
+        placeholder="admin@example.com"></div>
+    <div class="mb-4"><label class="label" for="password">{{ tr('رمز عبور', 'Password') }}</label><input id="password"
+                                                                                                         v-model="form.password"
+                                                                                                         class="input"
+                                                                                                         required
+                                                                                                         minlength="8"
+                                                                                                         type="password"
+                                                                                                         autocomplete="current-password"
+                                                                                                         :placeholder="tr('حداقل ۸ کاراکتر','At least 8 characters')">
+    </div>
+    <div class="mb-6 flex items-center justify-between text-xs text-slate-500"><label
+        class="flex items-center gap-2"><input v-model="form.remember" type="checkbox"
+                                               class="accent-brand-600">{{ tr('مرا به خاطر بسپار', 'Remember me') }}</label>
+      <NuxtLink to="/forgot-password" class="font-bold text-brand-600">
+        {{ tr('فراموشی رمز عبور', 'Forgot password?') }}
+      </NuxtLink>
+    </div>
+    <button class="btn btn-primary w-full py-3.5" :disabled="pending">
+      {{ pending ? tr('در حال ورود...', 'Signing in...') : tr('ورود به حساب', 'Sign in') }}
+    </button>
+    <p class="mt-6 text-center text-sm text-slate-500">{{ tr('حساب ندارید؟', 'No account?') }}
+      <NuxtLink to="/register" class="font-bold text-brand-600">{{ tr('رایگان ثبت‌نام کنید', 'Create one free') }}
+      </NuxtLink>
+    </p>
+  </form>
+</template>

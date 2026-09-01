@@ -1,1 +1,10 @@
-import{requireSession}from"../../utils/auth";import{db}from"../../utils/db";export default defineEventHandler(async event=>{const auth=await requireSession(event),userId=String(auth.sub);return{notifications:await db.notification.findMany({where:{userId},orderBy:{createdAt:"desc"},take:30}),unread:await db.notification.count({where:{userId,readAt:null}})}});
+import {requireSession} from "../../utils/auth";
+import {db} from "../../utils/db";
+
+export default defineEventHandler(async event => {
+    const auth = await requireSession(event), userId = String(auth.sub);
+    return {
+        notifications: await db.notification.findMany({where: {userId}, orderBy: {createdAt: "desc"}, take: 30}),
+        unread: await db.notification.count({where: {userId, readAt: null}})
+    }
+});

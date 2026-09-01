@@ -1,1 +1,13 @@
-import{requireAdmin}from"../../utils/admin";import{db}from"../../utils/db";export default defineEventHandler(async event=>{await requireAdmin(event);return{logs:await db.auditLog.findMany({include:{user:{select:{name:true,email:true}}},orderBy:{createdAt:"desc"},take:200})}});
+import {requireAdmin} from "../../utils/admin";
+import {db} from "../../utils/db";
+
+export default defineEventHandler(async event => {
+    await requireAdmin(event);
+    return {
+        logs: await db.auditLog.findMany({
+            include: {user: {select: {name: true, email: true}}},
+            orderBy: {createdAt: "desc"},
+            take: 200
+        })
+    }
+});

@@ -1,0 +1,2 @@
+<script setup lang="ts">import type{ChatMessage}from"~/types/chat";defineProps<{message:ChatMessage;formattedTime:string}>();</script>
+<template><div class="flex" :class="message.direction==='OUTBOUND'?'justify-start':'justify-end'"><div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-7 shadow-sm" :class="message.direction==='OUTBOUND'?'rounded-es-sm bg-brand-600 text-white':'rounded-ee-sm bg-white dark:bg-slate-800'"><p>{{message.body}}</p><small class="mt-1 block opacity-60">{{formattedTime}} · {{message.status}}</small></div></div></template>

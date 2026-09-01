@@ -1,3 +1,27 @@
-import { requireSession } from "../utils/auth";
-import { db } from "../utils/db";
-export default defineEventHandler(async (event) => { const auth = await requireSession(event), userId = String(auth.sub), now=new Date(); const [subscription, orders, usage, plans, freeCount] = await Promise.all([db.subscription.findFirst({ where: { userId,status:"ACTIVE",OR:[{endsAt:null},{endsAt:{gt:now}}] }, include: { plan: true }, orderBy: { createdAt: "desc" } }), db.order.findMany({ where: { userId }, include: { plan: true, payments: true }, orderBy: { createdAt: "desc" }, take: 20 }), db.usage.findFirst({ where: { userId }, orderBy: { periodStart: "desc" } }), db.plan.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } }),db.subscription.count({where:{userId,plan:{slug:"free"}}})]); return { subscription, orders, usage, plans, freeUsed:freeCount>0 }; });
+import {requireSession} from "../utils/auth";
+import {db} from "../utils/db";
+
+export default defineEventHandler(async (event) => {
+    const auth = await requireSession(event), userId = String(auth.sub), now = new Date();
+    const [subscription, orders, usage, plans, freeCount] = await Promise.all([db.subscription.findFirst({
+        where: {
+            userId,
+            status: "ACTIVE",
+            OR: [{endsAt: null}, {endsAt: {gt: now}}]
+        }, include: {plan: true}, orderBy: {createdAt: "desc"}
+    }), db.order.findMany({
+        where: {userId},
+        include: {plan: true, payments: true},
+        orderBy: {createdAt: "desc"},
+        take: 20
+    }), db.usage.findFirst({
+        where: {userId},
+        orderBy: {periodStart: "desc"}
+    }), db.plan.findMany({where: {isActive: true}, orderBy: {sortOrder: "asc"}}), db.subscription.count({
+        where: {
+            userId,
+            plan: {slug: "free"}
+        }
+    })]);
+    return {subscription, orders, usage, plans, freeUsed: freeCount > 0};
+});

@@ -1,1 +1,25 @@
-import{SignJWT,jwtVerify}from"jose";import type{H3Event}from"h3";const key=()=>new TextEncoder().encode(useRuntimeConfig().authSecret||"development-only-secret-change-me-32");export async function issueSession(event:H3Event,user:{id:string;role:string},remember=false){const token=await new SignJWT({role:user.role}).setProtectedHeader({alg:"HS256"}).setSubject(user.id).setIssuedAt().setExpirationTime(remember?"30d":"1d").sign(key());setCookie(event,"session",token,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:remember?2592000:86400})}export async function requireSession(event:H3Event){const token=getCookie(event,"session");if(!token)throw createError({statusCode:401,statusMessage:"لطفاً وارد حساب خود شوید."});try{return(await jwtVerify(token,key())).payload}catch{throw createError({statusCode:401,statusMessage:"نشست شما منقضی شده است."})}}
+import {SignJWT, jwtVerify} from "jose";
+import type {H3Event} from "h3";
+
+const key = () => new TextEncoder().encode(useRuntimeConfig().authSecret || "development-only-secret-change-me-32");
+
+export async function issueSession(event: H3Event, user: { id: string; role: string }, remember = false) {
+    const token = await new SignJWT({role: user.role}).setProtectedHeader({alg: "HS256"}).setSubject(user.id).setIssuedAt().setExpirationTime(remember ? "30d" : "1d").sign(key());
+    setCookie(event, "session", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: remember ? 2592000 : 86400
+    })
+}
+
+export async function requireSession(event: H3Event) {
+    const token = getCookie(event, "session");
+    if (!token) throw createError({statusCode: 401, statusMessage: "لطفاً وارد حساب خود شوید."});
+    try {
+        return (await jwtVerify(token, key())).payload
+    } catch {
+        throw createError({statusCode: 401, statusMessage: "نشست شما منقضی شده است."})
+    }
+}

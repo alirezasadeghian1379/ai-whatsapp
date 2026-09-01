@@ -1,1 +1,24 @@
-import{z}from"zod";import{requireAdmin}from"../../../utils/admin";import{db}from"../../../utils/db";const schema=z.object({name:z.string().min(2),description:z.string().nullable(),price:z.number().min(0),durationDays:z.number().int().min(1),maxWhatsAppConnections:z.number().int().min(0),maxMessages:z.number().int().min(0),maxWebhooks:z.number().int().min(0),maxAIRequests:z.number().int().min(0),maxContacts:z.number().int().min(0),features:z.array(z.string()),isActive:z.boolean(),sortOrder:z.number().int()});export default defineEventHandler(async event=>{await requireAdmin(event);const p=schema.safeParse(await readBody(event));if(!p.success)throw createError({statusCode:422,statusMessage:"اطلاعات پلن معتبر نیست."});return{plan:await db.plan.update({where:{id:getRouterParam(event,"id")||""},data:p.data})}});
+import {z} from "zod";
+import {requireAdmin} from "../../../utils/admin";
+import {db} from "../../../utils/db";
+
+const schema = z.object({
+    name: z.string().min(2),
+    description: z.string().nullable(),
+    price: z.number().min(0),
+    durationDays: z.number().int().min(1),
+    maxWhatsAppConnections: z.number().int().min(0),
+    maxMessages: z.number().int().min(0),
+    maxWebhooks: z.number().int().min(0),
+    maxAIRequests: z.number().int().min(0),
+    maxContacts: z.number().int().min(0),
+    features: z.array(z.string()),
+    isActive: z.boolean(),
+    sortOrder: z.number().int()
+});
+export default defineEventHandler(async event => {
+    await requireAdmin(event);
+    const p = schema.safeParse(await readBody(event));
+    if (!p.success) throw createError({statusCode: 422, statusMessage: "اطلاعات پلن معتبر نیست."});
+    return {plan: await db.plan.update({where: {id: getRouterParam(event, "id") || ""}, data: p.data})}
+});

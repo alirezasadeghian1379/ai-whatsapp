@@ -1,5 +1,50 @@
-import { createHmac } from "node:crypto";
-import { requireSession } from "../../../utils/auth";
-import { decryptSecret } from "../../../utils/crypto";
-import { db } from "../../../utils/db";
-export default defineEventHandler(async (event) => { const auth = await requireSession(event), id = getRouterParam(event, "id") || ""; const hook = await db.webhook.findFirst({ where: { id, userId: String(auth.sub) } }); if (!hook) throw createError({ statusCode: 404, statusMessage: "وب‌هوک پیدا نشد." }); const payload = JSON.stringify({ id: crypto.randomUUID(), event: "webhook.test", createdAt: new Date().toISOString(), data: { message: "Hamrah Chat test delivery" } }), started = Date.now(); let httpStatus: number | null = null, responseBody = ""; try { const response = await fetch(hook.url, { method: "POST", headers: { "content-type": "application/json", "user-agent": "HamrahChat-Webhook/1.0", "x-hamrah-event": "webhook.test", "x-hamrah-signature": `sha256=${createHmac("sha256", decryptSecret(hook.secretEncrypted)).update(payload).digest("hex")}` }, body: payload, signal: AbortSignal.timeout(10_000) }); httpStatus = response.status; responseBody = (await response.text()).slice(0, 4000); } catch (error) { responseBody = error instanceof Error ? error.message : "Delivery failed"; } const delivery = await db.webhookDelivery.create({ data: { webhookId: id, event: "webhook.test", requestBody: JSON.parse(payload), responseBody, httpStatus, durationMs: Date.now() - started, deliveredAt: httpStatus && httpStatus >= 200 && httpStatus < 300 ? new Date() : null } }); if (!delivery.deliveredAt) throw createError({ statusCode: 502, statusMessage: `ارسال تست ناموفق بود${httpStatus ? ` (HTTP ${httpStatus})` : ""}.` }); return { delivery }; });
+import {createHmac} from "node:crypto";
+import {requireSession} from "../../../utils/auth";
+import {decryptSecret} from "../../../utils/crypto";
+import {db} from "../../../utils/db";
+
+export default defineEventHandler(async (event) => {
+    const auth = await requireSession(event), id = getRouterParam(event, "id") || "";
+    const hook = await db.webhook.findFirst({where: {id, userId: String(auth.sub)}});
+    if (!hook) throw createError({statusCode: 404, statusMessage: "وب‌هوک پیدا نشد."});
+    const payload = JSON.stringify({
+        id: crypto.randomUUID(),
+        event: "webhook.test",
+        createdAt: new Date().toISOString(),
+        data: {message: "Hamrah Chat test delivery"}
+    }), started = Date.now();
+    let httpStatus: number | null = null, responseBody = "";
+    try {
+        const response = await fetch(hook.url, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                "user-agent": "HamrahChat-Webhook/1.0",
+                "x-hamrah-event": "webhook.test",
+                "x-hamrah-signature": `sha256=${createHmac("sha256", decryptSecret(hook.secretEncrypted)).update(payload).digest("hex")}`
+            },
+            body: payload,
+            signal: AbortSignal.timeout(10_000)
+        });
+        httpStatus = response.status;
+        responseBody = (await response.text()).slice(0, 4000);
+    } catch (error) {
+        responseBody = error instanceof Error ? error.message : "Delivery failed";
+    }
+    const delivery = await db.webhookDelivery.create({
+        data: {
+            webhookId: id,
+            event: "webhook.test",
+            requestBody: JSON.parse(payload),
+            responseBody,
+            httpStatus,
+            durationMs: Date.now() - started,
+            deliveredAt: httpStatus && httpStatus >= 200 && httpStatus < 300 ? new Date() : null
+        }
+    });
+    if (!delivery.deliveredAt) throw createError({
+        statusCode: 502,
+        statusMessage: `ارسال تست ناموفق بود${httpStatus ? ` (HTTP ${httpStatus})` : ""}.`
+    });
+    return {delivery};
+});
