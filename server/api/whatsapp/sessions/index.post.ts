@@ -17,12 +17,13 @@ export default defineEventHandler(async (event) => {
   const instanceName = `hamrah-${String(auth.sub).slice(-8)}-${crypto.randomUUID().slice(0, 8)}`;
   const created = await provider.createSession(instanceName);
   if (!created.ok) throw createError({ statusCode: 502, statusMessage: created.error });
-  const record = await databaseAction(() => db.whatsAppSession.create({ data: { userId: String(auth.sub), externalId: instanceName, displayName: parsed.data.displayName, status: whatsappStatus(created.data.state), provider: "evolution", metadata: { instanceName } } }));
+  const record = await databaseAction(() => db.whatsAppSession.create({ data: { userId: String(auth.sub), externalId: instanceName, displayName: parsed.data.displayName, status: whatsappStatus(created.data.state), provider: String(useRuntimeConfig().whatsappProvider), metadata: { instanceName } } }));
   const config = useRuntimeConfig();
   let webhookWarning: string | null = null;
-  if (config.whatsappWebhookSecret) {
+  if (config.whatsappProvider === "baileys") webhookWarning = null;
+  else if (config.whatsappWebhookSecret) {
     const webhook = await provider.configureWebhook(instanceName, `${config.appUrl.replace(/\/$/, "")}/api/whatsapp/webhook`, config.whatsappWebhookSecret);
     if (!webhook.ok) webhookWarning = webhook.error;
-  } else webhookWarning = "WHATSAPP_WEBHOOK_SECRET تنظیم نشده و دریافت پیام غیرفعال است.";
+  } else webhookWarning = "دریافت پیام برای این سرویس هنوز توسط مدیر سیستم فعال نشده است.";
   return { session: publicWhatsAppSession(record), qr: created.data.qr, webhookWarning };
 });

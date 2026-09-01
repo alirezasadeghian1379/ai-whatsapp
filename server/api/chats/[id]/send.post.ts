@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (conversation.session.status !== "CONNECTED") throw createError({ statusCode: 409, statusMessage: "واتساپ این گفتگو متصل نیست." });
   const sent = await getWhatsAppProvider().sendMessage(conversation.session.externalId, conversation.contact.phone, parsed.data.body);
   if (!sent.ok) throw createError({ statusCode: 502, statusMessage: sent.error });
-  const message = await db.message.create({ data: { conversationId: id, externalId: sent.data.messageId, direction: "OUTBOUND", body: parsed.data.body, status: "SENT", sentAt: new Date() } });
+  const message = await db.message.upsert({ where: { externalId: sent.data.messageId }, update: { body: parsed.data.body, status: "SENT", sentAt: new Date() }, create: { conversationId: id, externalId: sent.data.messageId, direction: "OUTBOUND", body: parsed.data.body, status: "SENT", sentAt: new Date() } });
   await db.conversation.update({ where: { id }, data: { lastMessageAt: new Date() } });
   void dispatchUserWebhooks(String(auth.sub), "message.sent", { messageId: message.id, conversationId: id, phone: conversation.contact.phone, body: message.body });
   return { message };

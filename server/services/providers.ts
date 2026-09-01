@@ -11,6 +11,30 @@ export interface WhatsAppProvider {
   configureWebhook(instanceName: string, url: string, secret: string): Promise<Result<void>>;
 }
 
+export class BaileysWhatsAppProvider implements WhatsAppProvider {
+  async createSession(instanceName: string): Promise<Result<WhatsAppSessionResult>> {
+    try { const { waitForBaileysState } = await import("./baileys-manager"); const data = await waitForBaileysState(instanceName); return { ok: true, data: { sessionId: instanceName, ...data } }; }
+    catch (error) { return { ok: false, error: error instanceof Error ? error.message : "اتصال واتساپ ساخته نشد." }; }
+  }
+  async getQr(instanceName: string) {
+    try { const { waitForBaileysState } = await import("./baileys-manager"); return { ok: true as const, data: await waitForBaileysState(instanceName) }; }
+    catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "QR واتساپ دریافت نشد." }; }
+  }
+  async getState(instanceName: string) {
+    try { const { waitForBaileysState } = await import("./baileys-manager"); const data = await waitForBaileysState(instanceName, 500); return { ok: true as const, data: { state: data.state } }; }
+    catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "وضعیت واتساپ دریافت نشد." }; }
+  }
+  async disconnect(instanceName: string) {
+    try { const { logoutBaileysSession } = await import("./baileys-manager"); await logoutBaileysSession(instanceName); return { ok: true as const, data: undefined }; }
+    catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "قطع اتصال واتساپ انجام نشد." }; }
+  }
+  async sendMessage(instanceName: string, to: string, body: string) {
+    try { const { sendBaileysMessage } = await import("./baileys-manager"); return { ok: true as const, data: { messageId: await sendBaileysMessage(instanceName, to, body) } }; }
+    catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "پیام واتساپ ارسال نشد." }; }
+  }
+  async configureWebhook() { return { ok: true as const, data: undefined }; }
+}
+
 export interface AIProvider { complete(input: { systemPrompt: string; message: string; temperature?: number; maxTokens?: number }): Promise<Result<{ text: string; tokens: number }>> }
 export interface PaymentProvider { createPayment(input: { orderId: string; amount: number; callbackUrl: string }): Promise<Result<{ authority: string; redirectUrl: string }>>; verify(authority: string, amount: number): Promise<Result<{ reference: string }>> }
 
@@ -33,7 +57,7 @@ function normalizeState(data: EvolutionResponse): string {
 }
 
 export class EvolutionWhatsAppProvider implements WhatsAppProvider {
-  constructor(private readonly baseUrl: string, private readonly apiKey: string) {}
+  constructor(private readonly baseUrl: string, private readonly apiKey: string, private readonly proxy?: { host: string; port: string; protocol: string; username?: string; password?: string }) {}
 
   private async request<T extends EvolutionResponse>(path: string, options: Record<string, any> = {}): Promise<Result<T>> {
     try {
@@ -53,7 +77,8 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
   }
 
   async createSession(instanceName: string): Promise<Result<WhatsAppSessionResult>> {
-    const result = await this.request<EvolutionResponse>("/instance/create", { method: "POST", body: { instanceName, qrcode: true, integration: "WHATSAPP-BAILEYS" } });
+    const proxy = this.proxy ? { proxyHost: this.proxy.host, proxyPort: this.proxy.port, proxyProtocol: this.proxy.protocol, ...(this.proxy.username ? { proxyUsername: this.proxy.username } : {}), ...(this.proxy.password ? { proxyPassword: this.proxy.password } : {}) } : {};
+    const result = await this.request<EvolutionResponse>("/instance/create", { method: "POST", body: { instanceName, qrcode: true, integration: "WHATSAPP-BAILEYS", ...proxy } });
     if (!result.ok) return result;
     return { ok: true, data: { sessionId: instanceName, qr: normalizeQr(result.data), state: normalizeState(result.data) } };
   }
@@ -92,9 +117,11 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
 
 export function getWhatsAppProvider(): WhatsAppProvider {
   const config = useRuntimeConfig();
-  if (config.whatsappProvider !== "evolution") throw createError({ statusCode: 503, statusMessage: "اتصال واقعی واتساپ فعال نیست. WHATSAPP_PROVIDER را روی evolution تنظیم کنید." });
-  if (!config.whatsappApiUrl || !config.whatsappApiKey) throw createError({ statusCode: 503, statusMessage: "آدرس یا کلید Evolution API در فایل .env تنظیم نشده است." });
-  return new EvolutionWhatsAppProvider(config.whatsappApiUrl, config.whatsappApiKey);
+  if (config.whatsappProvider === "baileys") return new BaileysWhatsAppProvider();
+  if (config.whatsappProvider !== "evolution") throw createError({ statusCode: 503, statusMessage: "سرویس واتساپ موقتاً در دسترس نیست؛ لطفاً با پشتیبانی تماس بگیرید." });
+  if (!config.whatsappApiUrl || !config.whatsappApiKey) throw createError({ statusCode: 503, statusMessage: "سرویس واتساپ هنوز توسط مدیر سیستم پیکربندی نشده است." });
+  const proxy = config.whatsappProxyHost && config.whatsappProxyPort ? { host: config.whatsappProxyHost, port: config.whatsappProxyPort, protocol: config.whatsappProxyProtocol, username: config.whatsappProxyUsername || undefined, password: config.whatsappProxyPassword || undefined } : undefined;
+  return new EvolutionWhatsAppProvider(config.whatsappApiUrl, config.whatsappApiKey, proxy);
 }
 
 export class OpenAIProvider implements AIProvider {
@@ -110,3 +137,13 @@ export class OpenAIProvider implements AIProvider {
     } catch { return { ok: false as const, error: "ارتباط با سرویس هوش مصنوعی برقرار نشد." }; }
   }
 }
+
+export class MockPaymentProvider implements PaymentProvider {
+  async createPayment(input:{orderId:string;amount:number;callbackUrl:string}){const authority=`sandbox_${crypto.randomUUID().replace(/-/g,"")}`;return{ok:true as const,data:{authority,redirectUrl:`/payment/mock?authority=${authority}`}}}
+  async verify(authority:string,amount:number){if(!authority.startsWith("sandbox_"))return{ok:false as const,error:"شناسه پرداخت آزمایشی معتبر نیست."};return{ok:true as const,data:{reference:`TEST-${Date.now()}`}}}
+}
+export class ZarinpalSandboxProvider implements PaymentProvider {
+  async createPayment(input:{orderId:string;amount:number;callbackUrl:string}){const authority=`zarinpal_test_${crypto.randomUUID().replace(/-/g,"")}`;return{ok:true as const,data:{authority,redirectUrl:`/payment/mock?provider=zarinpal&authority=${authority}&amount=${input.amount}`}}}
+  async verify(authority:string,amount:number){if(!authority.startsWith("zarinpal_test_"))return{ok:false as const,error:"تراکنش آزمایشی معتبر نیست."};return{ok:true as const,data:{reference:`ZP-TEST-${Date.now()}`}}}
+}
+export function getPaymentProvider(name?:string):PaymentProvider{const provider=name||String(useRuntimeConfig().paymentProvider);if(provider==="mock")return new MockPaymentProvider();if(provider==="zarinpal")return new ZarinpalSandboxProvider();throw createError({statusCode:503,statusMessage:"درگاه پرداخت در حال حاضر در دسترس نیست."})}

@@ -21,6 +21,7 @@ export default defineEventHandler(async (event) => {
   if (eventName === "CONNECTION_UPDATE") {
     const status = whatsappStatus(String(payload.data?.state ?? payload.data?.status ?? "connecting"));
     await db.whatsAppSession.update({ where: { id: session.id }, data: { status, phoneNumber: payload.data?.wuid?.split("@")[0] ?? session.phoneNumber, connectedAt: status === "CONNECTED" ? (session.connectedAt ?? new Date()) : session.connectedAt, lastSeenAt: new Date() } });
+    if (status !== session.status) await db.notification.create({ data: { userId: session.userId, type: status === "CONNECTED" ? "whatsapp.connected" : "whatsapp.disconnected", title: status === "CONNECTED" ? "واتساپ متصل شد" : "اتصال واتساپ قطع شد", body: session.displayName || session.phoneNumber, href: "/dashboard/whatsapp" } });
     void dispatchUserWebhooks(session.userId, status === "CONNECTED" ? "whatsapp.connected" : "whatsapp.disconnected", { sessionId: session.id, status });
   }
   if (eventName === "MESSAGES_UPSERT") {

@@ -1,0 +1,2 @@
+import { requireSession } from "../../../utils/auth";import{db}from"../../../utils/db";
+export default defineEventHandler(async event=>{const auth=await requireSession(event);const configurations=await db.smsConfiguration.findMany({where:{userId:String(auth.sub)},select:{id:true,title:true,provider:true,sender:true,isDefault:true,isEnabled:true,createdAt:true},orderBy:{createdAt:"desc"}});return{configurations,providers:[{id:"mock",name:"آزمایشی"},{id:"kavenegar",name:"کاوه‌نگار"},{id:"melipayamak",name:"ملی پیامک"},{id:"farazsms",name:"فراز اس‌ام‌اس"}]}});

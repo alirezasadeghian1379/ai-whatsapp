@@ -12,7 +12,9 @@ export function useAppPreferences(){
   const isRtl=computed(()=>locale.value==="fa");
   const t=(key:keyof typeof messages.fa)=>messages[locale.value][key];
   const tr=(fa:string,en:string)=>locale.value==="fa"?fa:en;
+  const formatDate=(value:string|Date|null|undefined,options:Intl.DateTimeFormatOptions={})=>value?new Intl.DateTimeFormat(locale.value==="fa"?"fa-IR-u-ca-persian":"en-US-u-ca-gregory",options).format(new Date(value)):"—";
+  const formatNumber=(value:number|string)=>new Intl.NumberFormat(locale.value==="fa"?"fa-IR":"en-US").format(Number(value||0));
   function toggleTheme(){theme.value=isDark.value?"light":"dark"}
   function toggleLocale(){locale.value=locale.value==="fa"?"en":"fa"}
-  return{locale,theme,isDark,isRtl,t,tr,toggleTheme,toggleLocale};
+  return{locale,theme,isDark,isRtl,t,tr,formatDate,formatNumber,toggleTheme,toggleLocale};
 }
