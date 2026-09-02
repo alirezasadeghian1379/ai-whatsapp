@@ -24,6 +24,7 @@ jobs:
     # This temporary SQLite URL is only used by CI; production values belong in
     # the environment of the server that runs .output/server/index.mjs.
     env:
+      CI: true
       DATABASE_URL: file:./ci.db
       AUTH_SECRET: ci-only-auth-secret-at-least-32-characters
       ENCRYPTION_SECRET: ci-only-encryption-secret-32-characters
@@ -43,7 +44,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
+      - name: Prepare Nuxt
+        run: npx nuxt prepare
 
       - name: Validate Prisma schema
         run: npx prisma validate
