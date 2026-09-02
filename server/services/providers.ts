@@ -12,6 +12,7 @@ export interface WhatsAppProvider {
     disconnect(instanceName: string): Promise<Result<void>>;
 
     sendMessage(instanceName: string, to: string, body: string): Promise<Result<{ messageId: string }>>;
+    sendMedia(instanceName: string, to: string, media: {data: Buffer; mimeType: string; fileName: string; caption?: string}): Promise<Result<{messageId:string}>>;
 
     configureWebhook(instanceName: string, url: string, secret: string): Promise<Result<void>>;
 }
@@ -62,6 +63,15 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
             return {ok: true as const, data: {messageId: await sendBaileysMessage(instanceName, to, body)}};
         } catch (error) {
             return {ok: false as const, error: error instanceof Error ? error.message : "پیام واتساپ ارسال نشد."};
+        }
+    }
+
+    async sendMedia(instanceName: string, to: string, media: {data:Buffer;mimeType:string;fileName:string;caption?:string}) {
+        try {
+            const {sendBaileysMedia} = await import("./baileys-manager");
+            return {ok:true as const,data:{messageId:await sendBaileysMedia(instanceName,to,media)}};
+        } catch(error) {
+            return {ok:false as const,error:error instanceof Error?error.message:"فایل واتساپ ارسال نشد."};
         }
     }
 
@@ -181,6 +191,8 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
             data: {messageId: String(result.data.key?.id ?? result.data.id ?? crypto.randomUUID())}
         };
     }
+
+    async sendMedia() { return {ok:false as const,error:"ارسال فایل برای Evolution هنوز تنظیم نشده است."}; }
 
     async configureWebhook(instanceName: string, url: string, secret: string) {
         const result = await this.request<EvolutionResponse>(`/webhook/set/${encodeURIComponent(instanceName)}`, {

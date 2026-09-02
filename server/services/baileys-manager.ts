@@ -163,6 +163,17 @@ export async function sendBaileysMessage(instanceName: string, to: string, body:
     return result?.key.id || crypto.randomUUID();
 }
 
+export async function sendBaileysMedia(instanceName:string,to:string,media:{data:Buffer;mimeType:string;fileName:string;caption?:string}) {
+    const runtime=await startBaileysSession(instanceName);
+    if(runtime.state!=="open"||!runtime.socket)throw new Error("واتساپ هنوز متصل نیست.");
+    const jid=`${to.replace(/\D/g,"")}@s.whatsapp.net`;
+    const content=media.mimeType.startsWith("image/")
+        ? {image:media.data,caption:media.caption,mimetype:media.mimeType}
+        : {document:media.data,fileName:media.fileName,mimetype:media.mimeType,caption:media.caption};
+    const result=await runtime.socket.sendMessage(jid,content as any);
+    return result?.key.id||crypto.randomUUID();
+}
+
 export async function logoutBaileysSession(instanceName: string) {
     const name = safeName(instanceName);
     const runtime = runtimes.get(name);

@@ -50,12 +50,13 @@ async function syncActiveConversation() {
   }
 }
 
-async function send() {
-  if (!selectedId.value || !text.value.trim()) return;
+async function send(file?:File) {
+  if (!selectedId.value || (!text.value.trim()&&!file)) return;
   busy.value = true;
   error.value = "";
   try {
-    await $fetch(`/api/chats/${selectedId.value}/send`, {method: "POST", body: {body: text.value}});
+    if(file){const body=new FormData();body.append("file",file);if(text.value.trim())body.append("caption",text.value.trim());await $fetch(`/api/chats/${selectedId.value}/media`,{method:"POST",body})}
+    else await $fetch(`/api/chats/${selectedId.value}/send`, {method: "POST", body: {body: text.value}});
     text.value = "";
     await select(selectedId.value)
   } catch (e: any) {
