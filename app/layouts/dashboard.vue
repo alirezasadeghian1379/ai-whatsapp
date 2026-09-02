@@ -19,29 +19,30 @@ import {
 
 const {t, tr} = useAppPreferences(), route = useRoute(), mobileOpen = ref(false);
 const {data: authData} = await useFetch<any>("/api/auth/session");
+const {data: accessData} = await useFetch<any>("/api/access");
 const user = computed(() => authData.value?.user),
     isAdmin = computed(() => ["ADMIN", "SUPER_ADMIN"].includes(user.value?.role));
 const items = computed(() => [{icon: LayoutDashboard, label: t("overview"), to: "/dashboard"}, {
   icon: Smartphone,
   label: t("whatsapp"),
-  to: "/dashboard/whatsapp"
+  to: "/dashboard/whatsapp", feature: "whatsapp"
 }, {icon: MessageCircleMore, label: t("chats"), to: "/dashboard/chats"}, {
   icon: UserRound,
   label: tr("مخاطبان", "Contacts"),
-  to: "/dashboard/contacts"
+  to: "/dashboard/contacts", feature: "contacts"
 }, {
   icon: Webhook,
   label: t("webhooks"),
-  to: "/dashboard/webhooks"
-}, {icon: Bot, label: t("ai"), to: "/dashboard/ai"}, {
+  to: "/dashboard/webhooks", feature: "webhooks"
+}, {icon: Bot, label: t("ai"), to: "/dashboard/ai", feature: "ai"}, {
   icon: CreditCard,
   label: t("subscription"),
   to: "/dashboard/subscription"
 }, {icon: WalletCards, label: tr("کیف پول", "Wallet"), to: "/dashboard/wallet"}, {
   icon: MessageSquareText,
   label: tr("پنل پیامکی", "SMS providers"),
-  to: "/dashboard/sms"
-}, {icon: Settings, label: t("settings"), to: "/dashboard/settings"}]);
+  to: "/dashboard/sms", feature: "sms"
+}, {icon: Settings, label: t("settings"), to: "/dashboard/settings"}].filter(item=>!item.feature||accessData.value?.features?.[item.feature]));
 watch(() => route.path, () => mobileOpen.value = false);
 
 async function logout() {

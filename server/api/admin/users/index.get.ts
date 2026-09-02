@@ -15,7 +15,10 @@ export default defineEventHandler(async event => {
                 role: true,
                 status: true,
                 createdAt: true,
-                _count: {select: {whatsappSessions: true, conversations: true}}
+                updatedAt: true,
+                wallet: {select: {balance: true}},
+                subscriptions: {where: {status: "ACTIVE"}, include: {plan: {select: {name: true, slug: true}}}, orderBy: {createdAt: "desc"}, take: 1},
+                _count: {select: {whatsappSessions: true, conversations: true, orders: true, webhooks: true}}
             },
             orderBy: {createdAt: "desc"},
             take: 100

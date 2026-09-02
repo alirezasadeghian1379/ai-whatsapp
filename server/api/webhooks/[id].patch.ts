@@ -1,11 +1,13 @@
 import {z} from "zod";
 import {requireSession} from "../../utils/auth";
 import {db} from "../../utils/db";
+import {assertPlanFeature} from "../../utils/plan";
 
 const schema = z.object({status: z.enum(["ACTIVE", "DISABLED"])});
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), id = getRouterParam(event, "id") || "",
         parsed = schema.safeParse(await readBody(event));
+    await assertPlanFeature(String(auth.sub), "webhooks");
     if (!parsed.success) throw createError({statusCode: 422});
     const hook = await db.webhook.findFirst({where: {id, userId: String(auth.sub)}});
     if (!hook) throw createError({statusCode: 404});

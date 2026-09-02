@@ -2,6 +2,7 @@ import {z} from "zod";
 import {requireSession} from "../../utils/auth";
 import {encryptSecret} from "../../utils/crypto";
 import {db} from "../../utils/db";
+import {assertPlanFeature} from "../../utils/plan";
 
 const schema = z.object({
     provider: z.enum(["openai", "groq"]),
@@ -18,6 +19,7 @@ const schema = z.object({
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), userId = String(auth.sub),
         parsed = schema.safeParse(await readBody(event));
+    await assertPlanFeature(userId, "ai");
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "تنظیمات AI معتبر نیست."});
     const existing = await db.aIConfiguration.findFirst({where: {userId}});
     const {apiKey, ...values} = parsed.data;

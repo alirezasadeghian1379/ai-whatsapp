@@ -3,6 +3,7 @@ import {z} from "zod";
 import {db} from "../../utils/db";
 import {issueSession} from "../../utils/auth";
 import {databaseAction} from "../../utils/errors";
+import {assertRateLimit} from "../../utils/rate-limit";
 
 const schema = z.object({
     name: z.string().trim().min(2),
@@ -12,6 +13,7 @@ const schema = z.object({
 });
 
 export default defineEventHandler(async event => {
+    assertRateLimit(event,"register",{limit:5,windowMs:60*60*1000});
     const parsed = schema.safeParse(await readBody(event));
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "اطلاعات واردشده معتبر نیست."});
     const {name, email, phone, password} = parsed.data;

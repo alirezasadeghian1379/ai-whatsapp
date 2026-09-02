@@ -3,6 +3,7 @@ import {z} from "zod";
 import {db} from "../../utils/db";
 import {issueSession} from "../../utils/auth";
 import {databaseAction} from "../../utils/errors";
+import {assertRateLimit} from "../../utils/rate-limit";
 
 const schema = z.object({
     identity: z.string().trim().min(3),
@@ -12,6 +13,7 @@ const schema = z.object({
 
 export default defineEventHandler(async event => {
     const parsed = schema.safeParse(await readBody(event));
+    if(parsed.success)assertRateLimit(event,"login",{limit:8,windowMs:15*60*1000,identity:parsed.data.identity});
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "اطلاعات ورود معتبر نیست."});
     const user = await databaseAction(() => db.user.findFirst({where: {OR: [{email: parsed.data.identity.toLowerCase()}, {phone: parsed.data.identity}]}}));
     if (!user || !await compare(parsed.data.password, user.passwordHash)) throw createError({

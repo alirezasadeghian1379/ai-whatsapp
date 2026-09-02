@@ -2,6 +2,7 @@ import {z} from "zod";
 import {requireSession} from "../../../utils/auth";
 import {db} from "../../../utils/db";
 import {encryptSecret} from "../../../utils/crypto";
+import {assertPlanFeature} from "../../../utils/plan";
 
 const schema = z.object({
     title: z.string().trim().min(2).max(60),
@@ -12,6 +13,7 @@ const schema = z.object({
 });
 export default defineEventHandler(async event => {
     const auth = await requireSession(event), p = schema.safeParse(await readBody(event));
+    await assertPlanFeature(String(auth.sub), "sms");
     if (!p.success) throw createError({statusCode: 422, statusMessage: "اطلاعات پنل پیامکی معتبر نیست."});
     const userId = String(auth.sub);
     if (p.data.provider !== "mock" && !p.data.apiKey) throw createError({

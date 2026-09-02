@@ -3,10 +3,12 @@ import {getAIProvider} from "../../services/providers";
 import {requireSession} from "../../utils/auth";
 import {decryptSecret} from "../../utils/crypto";
 import {db} from "../../utils/db";
+import {assertPlanLimit} from "../../utils/plan";
 
 const schema = z.object({message: z.string().trim().min(1).max(4000)});
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), parsed = schema.safeParse(await readBody(event));
+    await assertPlanLimit(String(auth.sub), "ai");
     if (!parsed.success) throw createError({statusCode: 422});
     const config = await db.aIConfiguration.findFirst({where: {userId: String(auth.sub)}});
     if (!config?.apiKeyEncrypted) throw createError({

@@ -1,6 +1,7 @@
 export default defineNuxtRouteMiddleware(async to => {
-    // Signed-in users may still visit the public landing page.
-    if (to.path !== "/login") return;
+    // Marketing pages remain public, while authenticated users should not
+    // return to account-entry or password-recovery screens.
+    if (!["/login", "/register", "/forgot-password", "/reset-password"].includes(to.path)) return;
     try {
         const headers = import.meta.server ? useRequestHeaders(["cookie"]) : undefined;
         const {user} = await $fetch<any>("/api/auth/session", {headers});

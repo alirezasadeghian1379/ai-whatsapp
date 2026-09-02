@@ -237,6 +237,14 @@ export async function sendBaileysMedia(instanceName:string,to:string,media:{data
     return result?.key.id||crypto.randomUUID();
 }
 
+export async function markBaileysMessagesRead(instanceName: string, to: string, messageIds: string[]) {
+    if (!messageIds.length) return;
+    const runtime = await startBaileysSession(instanceName);
+    if (runtime.state !== "open" || !runtime.socket) return;
+    const remoteJid = `${to.replace(/\D/g, "")}@s.whatsapp.net`;
+    await runtime.socket.readMessages(messageIds.map(id => ({remoteJid, id, fromMe: false})));
+}
+
 export async function logoutBaileysSession(instanceName: string) {
     const name = safeName(instanceName);
     const runtime = runtimes.get(name);

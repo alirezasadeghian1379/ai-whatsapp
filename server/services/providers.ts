@@ -14,6 +14,8 @@ export interface WhatsAppProvider {
     sendMessage(instanceName: string, to: string, body: string): Promise<Result<{ messageId: string }>>;
     sendMedia(instanceName: string, to: string, media: {data: Buffer; mimeType: string; fileName: string; caption?: string}): Promise<Result<{messageId:string}>>;
 
+    markRead(instanceName: string, to: string, messageIds: string[]): Promise<Result<void>>;
+
     configureWebhook(instanceName: string, url: string, secret: string): Promise<Result<void>>;
 }
 
@@ -72,6 +74,16 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
             return {ok:true as const,data:{messageId:await sendBaileysMedia(instanceName,to,media)}};
         } catch(error) {
             return {ok:false as const,error:error instanceof Error?error.message:"فایل واتساپ ارسال نشد."};
+        }
+    }
+
+    async markRead(instanceName: string, to: string, messageIds: string[]) {
+        try {
+            const {markBaileysMessagesRead} = await import("./baileys-manager");
+            await markBaileysMessagesRead(instanceName, to, messageIds);
+            return {ok: true as const, data: undefined};
+        } catch (error) {
+            return {ok: false as const, error: error instanceof Error ? error.message : "ثبت خواندن پیام‌ها انجام نشد."};
         }
     }
 
@@ -193,6 +205,15 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
     }
 
     async sendMedia() { return {ok:false as const,error:"ارسال فایل برای Evolution هنوز تنظیم نشده است."}; }
+
+    async markRead(instanceName: string, to: string, messageIds: string[]) {
+        if (!messageIds.length) return {ok: true as const, data: undefined};
+        const result = await this.request<EvolutionResponse>(`/chat/markMessageAsRead/${encodeURIComponent(instanceName)}`, {
+            method: "POST",
+            body: {readMessages: messageIds.map(id => ({remoteJid: `${to.replace(/\D/g, "")}@s.whatsapp.net`, fromMe: false, id}))}
+        });
+        return result.ok ? {ok: true as const, data: undefined} : result;
+    }
 
     async configureWebhook(instanceName: string, url: string, secret: string) {
         const result = await this.request<EvolutionResponse>(`/webhook/set/${encodeURIComponent(instanceName)}`, {

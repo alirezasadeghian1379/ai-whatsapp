@@ -2,6 +2,7 @@ import {z} from "zod";
 import {requireSession} from "../../utils/auth";
 import {db} from "../../utils/db";
 import {getSmsProvider} from "../../services/sms";
+import {assertPlanFeature} from "../../utils/plan";
 
 const schema = z.object({
     configurationId: z.string().optional(),
@@ -10,6 +11,7 @@ const schema = z.object({
 });
 export default defineEventHandler(async event => {
     const auth = await requireSession(event), userId = String(auth.sub), p = schema.safeParse(await readBody(event));
+    await assertPlanFeature(userId, "sms");
     if (!p.success) throw createError({statusCode: 422, statusMessage: "شماره موبایل یا متن پیام معتبر نیست."});
     const configuration = await db.smsConfiguration.findFirst({
         where: {

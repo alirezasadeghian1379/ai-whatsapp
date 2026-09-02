@@ -2,8 +2,11 @@ import {createHmac} from "node:crypto";
 import {getAIProvider, getWhatsAppProvider} from "./providers";
 import {decryptSecret} from "../utils/crypto";
 import {db} from "../utils/db";
+import {assertPlanLimit, getPlanAccess} from "../utils/plan";
 
 export async function dispatchUserWebhooks(userId: string, event: string, data: unknown) {
+    const access = await getPlanAccess(userId);
+    if (!access.features.webhooks) return;
     const hooks = await db.webhook.findMany({where: {userId, status: "ACTIVE"}});
     await Promise.all(hooks.filter(h => Array.isArray(h.events) && (h.events as string[]).includes(event)).map(async hook => {
         const body = JSON.stringify({id: crypto.randomUUID(), event, createdAt: new Date().toISOString(), data});
@@ -54,6 +57,12 @@ export async function runAutoReply(input: {
     phone: string;
     message: string
 }) {
+    try {
+        await assertPlanLimit(input.userId, "ai");
+        await assertPlanLimit(input.userId, "messages");
+    } catch {
+        return;
+    }
     const config = await db.aIConfiguration.findFirst({
         where: {
             userId: input.userId,
