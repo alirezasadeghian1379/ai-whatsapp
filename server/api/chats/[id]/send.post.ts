@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
             conversationId: id,
             externalId: sent.data.messageId,
             direction: "OUTBOUND",
+            source: "ADMIN",
             body: parsed.data.body,
             status: "SENT",
             sentAt: new Date()

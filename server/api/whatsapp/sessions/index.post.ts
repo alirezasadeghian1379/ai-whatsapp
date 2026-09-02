@@ -13,19 +13,19 @@ export default defineEventHandler(async (event) => {
     await assertPlanLimit(String(auth.sub), "whatsapp");
     const parsed = schema.safeParse(await readBody(event).catch(() => ({})));
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "نام اتصال معتبر نیست."});
-    const provider = getWhatsAppProvider();
     const instanceName = `hamrah-${String(auth.sub).slice(-8)}-${crypto.randomUUID().slice(0, 8)}`;
+    const pending = await databaseAction(() => db.whatsAppSession.create({
+        data: {userId: String(auth.sub), externalId: instanceName, displayName: parsed.data.displayName,
+            status: "CONNECTING", provider: String(useRuntimeConfig().whatsappProvider), metadata: {instanceName}}
+    }));
+    const provider = getWhatsAppProvider();
     const created = await provider.createSession(instanceName);
-    if (!created.ok) throw createError({statusCode: 502, statusMessage: created.error});
-    const record = await databaseAction(() => db.whatsAppSession.create({
-        data: {
-            userId: String(auth.sub),
-            externalId: instanceName,
-            displayName: parsed.data.displayName,
-            status: whatsappStatus(created.data.state),
-            provider: String(useRuntimeConfig().whatsappProvider),
-            metadata: {instanceName}
-        }
+    if (!created.ok) {
+        await db.whatsAppSession.delete({where: {id: pending.id}}).catch(() => undefined);
+        throw createError({statusCode: 502, statusMessage: created.error});
+    }
+    const record = await databaseAction(() => db.whatsAppSession.update({
+        where: {id: pending.id}, data: {status: whatsappStatus(created.data.state), lastSeenAt: new Date()}
     }));
     const config = useRuntimeConfig();
     let webhookWarning: string | null = null;

@@ -1,5 +1,5 @@
 import {createHmac} from "node:crypto";
-import {OpenAIProvider, getWhatsAppProvider} from "./providers";
+import {getAIProvider, getWhatsAppProvider} from "./providers";
 import {decryptSecret} from "../utils/crypto";
 import {db} from "../utils/db";
 
@@ -63,7 +63,7 @@ export async function runAutoReply(input: {
     });
     if (!config?.apiKeyEncrypted) return;
     if (config.delaySeconds) await new Promise(resolve => setTimeout(resolve, Math.min(config.delaySeconds, 30) * 1000));
-    const completion = await new OpenAIProvider(decryptSecret(config.apiKeyEncrypted), config.model).complete({
+    const completion = await getAIProvider(config.provider, decryptSecret(config.apiKeyEncrypted), config.model).complete({
         systemPrompt: config.systemPrompt,
         message: input.message,
         temperature: config.temperature,
@@ -78,6 +78,7 @@ export async function runAutoReply(input: {
             conversationId: input.conversationId,
             externalId: sent.data.messageId,
             direction: "OUTBOUND",
+            source: "AI",
             body,
             status: "SENT",
             sentAt: new Date()

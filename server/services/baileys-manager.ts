@@ -43,15 +43,18 @@ function textOf(message: WAMessage["message"]): string | null {
     return inner?.conversation ?? inner?.extendedTextMessage?.text ?? inner?.imageMessage?.caption ?? inner?.videoMessage?.caption ?? null;
 }
 
-async function updateConnection(instanceName: string, state: string, phone?: string) {
+async function updateConnection(instanceName: string, state: string, phone?: string, loggedOut = false) {
     const session = await db.whatsAppSession.findUnique({where: {externalId: instanceName}});
     if (!session) return;
-    const status = state === "open" ? "CONNECTED" : state === "close" ? "DISCONNECTED" : "CONNECTING";
+    // Network/proxy restarts are temporary. Only a real WhatsApp logout or an
+    // explicit user disconnect should make the persisted session disconnected.
+    const status = state === "open" ? "CONNECTED" : loggedOut ? "DISCONNECTED" : "CONNECTING";
     await db.whatsAppSession.update({
         where: {id: session.id},
         data: {
             status,
             phoneNumber: phone || session.phoneNumber,
+            ...(status === "CONNECTED" ? {metadata: {...(session.metadata as object || {}), explicitDisconnected: false}} : {}),
             connectedAt: status === "CONNECTED" ? (session.connectedAt || new Date()) : session.connectedAt,
             lastSeenAt: new Date()
         }
@@ -96,8 +99,8 @@ async function boot(instanceName: string, runtime: Runtime) {
             await updateConnection(instanceName, "open", socket.user?.id?.split(":")[0]);
         }
         if (update.connection === "close") {
-            await updateConnection(instanceName, "close");
             const code = (update.lastDisconnect?.error as any)?.output?.statusCode;
+            await updateConnection(instanceName, "close", undefined, code === DisconnectReason.loggedOut);
             if (code !== DisconnectReason.loggedOut) {
                 clearTimeout(runtime.reconnectTimer);
                 runtime.reconnectTimer = setTimeout(() => void startBaileysSession(instanceName, true), 1500);

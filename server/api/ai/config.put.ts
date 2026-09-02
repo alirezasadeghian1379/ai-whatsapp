@@ -4,7 +4,7 @@ import {encryptSecret} from "../../utils/crypto";
 import {db} from "../../utils/db";
 
 const schema = z.object({
-    provider: z.enum(["openai"]),
+    provider: z.enum(["openai", "groq"]),
     model: z.string().trim().min(2).max(100),
     apiKey: z.string().trim().optional(),
     systemPrompt: z.string().trim().min(10).max(8000),
@@ -22,6 +22,10 @@ export default defineEventHandler(async (event) => {
     const existing = await db.aIConfiguration.findFirst({where: {userId}});
     const {apiKey, ...values} = parsed.data;
     if (!existing && !apiKey) throw createError({statusCode: 422, statusMessage: "API Key را وارد کنید."});
+    if (existing && existing.provider !== parsed.data.provider && !apiKey) throw createError({
+        statusCode: 422,
+        statusMessage: "برای ارائه‌دهنده جدید، API Key همان سرویس را وارد کنید."
+    });
     const data = {...values, ...(apiKey ? {apiKeyEncrypted: encryptSecret(apiKey)} : {})};
     const config = existing ? await db.aIConfiguration.update({
         where: {id: existing.id},

@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     if (!result.ok) throw createError({statusCode: 502, statusMessage: result.error});
     const updated = await databaseAction(() => db.whatsAppSession.update({
         where: {id},
-        data: {status: "DISCONNECTED", lastSeenAt: new Date()}
+        data: {status: "DISCONNECTED", lastSeenAt: new Date(), metadata: {...(session.metadata as object || {}), explicitDisconnected: true}}
     }));
     return {session: publicWhatsAppSession(updated)};
 });

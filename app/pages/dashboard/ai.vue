@@ -18,6 +18,19 @@ const form = reactive({
   delaySeconds: 2,
   fallbackMessage: "در حال حاضر امکان پاسخ‌گویی خودکار وجود ندارد."
 });
+const modelOptions = computed(() => form.provider === "groq" ? [
+  {value: "openai/gpt-oss-20b", label: "GPT-OSS 20B (سریع و اقتصادی)"},
+  {value: "openai/gpt-oss-120b", label: "GPT-OSS 120B (قدرتمند)"},
+  {value: "qwen/qwen3.6-27b", label: "Qwen 3.6 27B"},
+  {value: "groq/compound-mini", label: "Groq Compound Mini"}
+] : [
+  {value: "gpt-5-mini", label: "GPT-5 mini"},
+  {value: "gpt-5", label: "GPT-5"},
+  {value: "gpt-4.1-mini", label: "GPT-4.1 mini"}
+]);
+watch(() => form.provider, () => {
+  if (!modelOptions.value.some(item => item.value === form.model)) form.model = modelOptions.value[0]!.value
+});
 watchEffect(() => {
   const c = data.value?.config;
   if (c) Object.assign(form, {
@@ -92,9 +105,10 @@ async function test() {
         <div class="grid gap-4 sm:grid-cols-2"><label><span class="label">Provider</span><select v-model="form.provider"
                                                                                                  class="input">
           <option value="openai">OpenAI Responses API</option>
-        </select></label><label><span class="label">{{ tr('مدل', 'Model') }}</span><input v-model="form.model"
-                                                                                          class="input" dir="ltr"
-                                                                                          placeholder="gpt-5-mini"></label>
+          <option value="groq">Groq Cloud</option>
+        </select></label><label><span class="label">{{ tr('مدل', 'Model') }}</span><select v-model="form.model" class="input" dir="ltr">
+          <option v-for="item in modelOptions" :key="item.value" :value="item.value">{{item.label}} — {{item.value}}</option>
+        </select></label>
         </div>
         <label class="block"><span class="label flex items-center gap-2"><KeyRound :size="15"/>API Key <small
             v-if="data?.config?.hasApiKey"

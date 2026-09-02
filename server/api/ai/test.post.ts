@@ -1,5 +1,5 @@
 import {z} from "zod";
-import {OpenAIProvider} from "../../services/providers";
+import {getAIProvider} from "../../services/providers";
 import {requireSession} from "../../utils/auth";
 import {decryptSecret} from "../../utils/crypto";
 import {db} from "../../utils/db";
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "ابتدا تنظیمات و API Key هوش مصنوعی را ذخیره کنید."
     });
-    const result = await new OpenAIProvider(decryptSecret(config.apiKeyEncrypted), config.model).complete({
+    const result = await getAIProvider(config.provider, decryptSecret(config.apiKeyEncrypted), config.model).complete({
         systemPrompt: config.systemPrompt,
         message: parsed.data.message,
         temperature: config.temperature,

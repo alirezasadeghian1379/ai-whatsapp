@@ -85,6 +85,7 @@ export default defineEventHandler(async (event) => {
                     conversationId: conversation.id,
                     externalId: key?.id || null,
                     direction: key?.fromMe ? "OUTBOUND" : "INBOUND",
+                    source: key?.fromMe ? "WHATSAPP" : "CONTACT",
                     body,
                     status: key?.fromMe ? "SENT" : "RECEIVED",
                     sentAt: new Date(Number(item?.messageTimestamp || 0) * 1000 || Date.now())

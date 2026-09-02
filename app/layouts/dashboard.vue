@@ -8,7 +8,6 @@ import {
   Menu,
   MessageCircleMore,
   MessageSquareText,
-  Search,
   Settings,
   ShieldCheck,
   Smartphone,
@@ -100,9 +99,7 @@ async function logout() {
         <button class="icon-btn lg:hidden" @click="mobileOpen=true">
           <Menu :size="19"/>
         </button>
-        <div class="relative hidden max-w-md flex-1 md:block">
-          <Search class="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" :size="17"/>
-          <input class="input py-2.5 ps-10" :placeholder="t('search')+'...'" disabled></div>
+        <div class="hidden max-w-md flex-1 md:block"><GlobalSearch/></div>
         <div class="ms-auto flex items-center gap-1">
           <ThemeLanguageControls/>
           <NotificationMenu/>

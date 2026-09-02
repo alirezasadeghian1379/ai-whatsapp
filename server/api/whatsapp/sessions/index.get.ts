@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
         orderBy: {createdAt: "desc"}
     }));
     const synced = await Promise.all(sessions.map(async (session) => {
+        if ((session.metadata as Record<string, unknown> | null)?.explicitDisconnected === true) return session;
         const state = await provider.getState(session.externalId);
         if (!state.ok) return session;
         const status = whatsappStatus(state.data.state);

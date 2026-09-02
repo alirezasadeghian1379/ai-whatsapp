@@ -251,6 +251,7 @@ model Message {
   conversationId String
   externalId String? @unique
   direction String
+  source String @default("WHATSAPP")
   type String @default("text")
   body String?
   mediaUrl String?

@@ -251,6 +251,42 @@ export class OpenAIProvider implements AIProvider {
     }
 }
 
+export class GroqProvider implements AIProvider {
+    constructor(private readonly apiKey: string, private readonly model: string) {}
+
+    async complete(input: {systemPrompt: string; message: string; temperature?: number; maxTokens?: number}) {
+        try {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {authorization: `Bearer ${this.apiKey}`, "content-type": "application/json"},
+                body: JSON.stringify({
+                    model: this.model,
+                    messages: [
+                        {role: "system", content: input.systemPrompt},
+                        {role: "user", content: input.message}
+                    ],
+                    temperature: input.temperature,
+                    max_completion_tokens: input.maxTokens || 500
+                }),
+                signal: AbortSignal.timeout(30_000)
+            });
+            const data = await response.json() as any;
+            if (!response.ok) return {ok: false as const, error: data.error?.message || "سرویس Groq پاسخ نداد."};
+            const text = data.choices?.[0]?.message?.content;
+            if (!text) return {ok: false as const, error: "پاسخ متنی از Groq دریافت نشد."};
+            return {ok: true as const, data: {text: String(text), tokens: Number(data.usage?.total_tokens || 0)}};
+        } catch {
+            return {ok: false as const, error: "ارتباط با سرویس Groq برقرار نشد."};
+        }
+    }
+}
+
+export function getAIProvider(provider: string, apiKey: string, model: string): AIProvider {
+    if (provider === "groq") return new GroqProvider(apiKey, model);
+    if (provider === "openai") return new OpenAIProvider(apiKey, model);
+    throw createError({statusCode: 422, statusMessage: "ارائه‌دهنده هوش مصنوعی پشتیبانی نمی‌شود."});
+}
+
 export class MockPaymentProvider implements PaymentProvider {
     async createPayment(input: { orderId: string; amount: number; callbackUrl: string }) {
         const authority = `sandbox_${crypto.randomUUID().replace(/-/g, "")}`;

@@ -6,6 +6,7 @@ export interface IncomingWhatsAppMessage {
     remoteJid: string;
     originalJid?: string;
     fromMe: boolean;
+    source?: "ADMIN" | "AI" | "WHATSAPP" | "CONTACT";
     pushName?: string | null;
     body: string;
     timestamp?: number;
@@ -52,6 +53,7 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
         conversationId: conversation.id,
         externalId: input.messageId || null,
         direction: input.fromMe ? "OUTBOUND" : "INBOUND",
+        source: input.source || (input.fromMe ? "WHATSAPP" : "CONTACT"),
         body: input.body,
         status: input.fromMe ? "SENT" : "RECEIVED",
         sentAt: at
@@ -75,4 +77,5 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
             message: input.body
         });
     }
+    return {message: saved, conversation, contact};
 }
