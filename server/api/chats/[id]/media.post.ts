@@ -1,3 +1,5 @@
+import {mkdir,writeFile} from "node:fs/promises"
+import {extname,join} from "node:path"
 import {getWhatsAppProvider} from "../../../services/providers"
 import {requireSession} from "../../../utils/auth"
 import {assertPlanLimit} from "../../../utils/plan"
@@ -17,7 +19,10 @@ export default defineEventHandler(async event=>{
  if(conversation.session.status!=="CONNECTED")throw createError({statusCode:409,statusMessage:"واتساپ این گفتگو متصل نیست."})
  const sent=await getWhatsAppProvider().sendMedia(conversation.session.externalId,conversation.contact.phone,{data:file.data,mimeType:file.type,fileName:file.filename,caption})
  if(!sent.ok)throw createError({statusCode:502,statusMessage:sent.error})
- const message=await db.message.create({data:{conversationId:id,externalId:sent.data.messageId,direction:"OUTBOUND",source:"ADMIN",type:file.type.startsWith("image/")?"image":"document",body:caption||file.filename,status:"SENT",sentAt:new Date()}})
+ const extension=extname(file.filename).toLowerCase()||({"image/jpeg":".jpg","image/png":".png","image/webp":".webp","application/pdf":".pdf","text/plain":".txt"}[file.type]||"")
+ const storedName=`${crypto.randomUUID()}${extension}`,mediaDir=join(process.cwd(),"storage","chat-media")
+ await mkdir(mediaDir,{recursive:true});await writeFile(join(mediaDir,storedName),file.data)
+ const message=await db.message.create({data:{conversationId:id,externalId:sent.data.messageId,direction:"OUTBOUND",source:"ADMIN",type:file.type.startsWith("image/")?"image":"document",body:caption||file.filename,mediaUrl:storedName,status:"SENT",sentAt:new Date()}})
  await db.conversation.update({where:{id},data:{lastMessageAt:new Date()}})
  return{message}
 })

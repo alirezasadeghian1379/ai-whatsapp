@@ -35,10 +35,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -61,11 +61,16 @@ jobs:
       - name: Build Nuxt server
         run: npm run build
 
+      - name: Verify server output
+        shell: bash
+        run: test -f .output/server/index.mjs
+
       - name: Upload Node server artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: hamrah-chat-node-${{ github.sha }}
           path: .output/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
