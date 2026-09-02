@@ -1,11 +1,13 @@
 import makeWASocket, {
     Browsers,
     DisconnectReason,
+    downloadMediaMessage,
     useMultiFileAuthState,
+    WAMessageStatus,
     type WASocket,
     type WAMessage
 } from "@whiskeysockets/baileys";
-import {rm} from "node:fs/promises";
+import {mkdir,rm,writeFile} from "node:fs/promises";
 import {join, resolve} from "node:path";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -41,6 +43,35 @@ function textOf(message: WAMessage["message"]): string | null {
     if (!message) return null;
     const inner = message.ephemeralMessage?.message || message.viewOnceMessage?.message || message;
     return inner?.conversation ?? inner?.extendedTextMessage?.text ?? inner?.imageMessage?.caption ?? inner?.videoMessage?.caption ?? null;
+}
+
+function messageContent(message: WAMessage["message"]) {
+    return message?.ephemeralMessage?.message || message?.viewOnceMessage?.message || message;
+}
+
+async function saveIncomingMedia(message: WAMessage) {
+    const content = messageContent(message.message);
+    const image = content?.imageMessage;
+    const document = content?.documentMessage;
+    const media = image || document;
+    if (!media) return null;
+    const size = Number(media.fileLength || 0);
+    if (size > 10 * 1024 * 1024) return null;
+    const mime = media.mimetype || (image ? "image/jpeg" : "application/octet-stream");
+    const extensions: Record<string, string> = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf", "text/plain": ".txt"};
+    const extension = extensions[mime];
+    if (!extension) return null;
+    const data = await downloadMediaMessage(message, "buffer", {});
+    if (data.length > 10 * 1024 * 1024) return null;
+    const storedName = `${crypto.randomUUID()}${extension}`;
+    const directory = join(process.cwd(), "storage", "chat-media");
+    await mkdir(directory, {recursive: true});
+    await writeFile(join(directory, storedName), data);
+    return {
+        type: image ? "image" as const : "document" as const,
+        mediaUrl: storedName,
+        body: image?.caption || document?.caption || document?.fileName || (image ? "تصویر" : "فایل پیوست")
+    };
 }
 
 async function updateConnection(instanceName: string, state: string, phone?: string, loggedOut = false) {
@@ -111,7 +142,8 @@ async function boot(instanceName: string, runtime: Runtime) {
         if (type !== "notify") return;
         const {recordWhatsAppMessage} = await import("./whatsapp-events");
         for (const message of messages) {
-            const body = textOf(message.message);
+            const media = await saveIncomingMedia(message).catch(() => null);
+            const body = textOf(message.message) || media?.body;
             const originalJid = message.key.remoteJid;
             let remoteJid = message.key.remoteJidAlt || originalJid;
             if (remoteJid?.endsWith("@lid")) remoteJid = await socket.signalRepository.lidMapping.getPNForLID(remoteJid) || remoteJid;
@@ -123,7 +155,38 @@ async function boot(instanceName: string, runtime: Runtime) {
                 fromMe: !!message.key.fromMe,
                 pushName: message.pushName,
                 body,
+                type: media?.type,
+                mediaUrl: media?.mediaUrl,
                 timestamp: Number(message.messageTimestamp || 0) || undefined
+            });
+        }
+    });
+    socket.ev.on("messages.update", async updates => {
+        for (const {key, update} of updates) {
+            if (!key.id || !key.fromMe || typeof update.status !== "number") continue;
+            const nextStatus = update.status === WAMessageStatus.ERROR
+                ? "FAILED"
+                : update.status >= WAMessageStatus.READ
+                    ? "READ"
+                    : update.status >= WAMessageStatus.DELIVERY_ACK
+                        ? "DELIVERED"
+                        : update.status >= WAMessageStatus.SERVER_ACK
+                            ? "SENT"
+                            : "PENDING";
+            // Delivery events can arrive out of order. Never replace a more
+            // advanced state (READ/DELIVERED) with an older acknowledgement.
+            const allowedCurrent = nextStatus === "READ"
+                ? ["PENDING", "SENT", "DELIVERED", "READ"]
+                : nextStatus === "DELIVERED"
+                    ? ["PENDING", "SENT", "DELIVERED"]
+                    : nextStatus === "SENT"
+                        ? ["PENDING", "SENT"]
+                        : nextStatus === "FAILED"
+                            ? ["PENDING", "SENT", "FAILED"]
+                            : ["PENDING"];
+            await db.message.updateMany({
+                where: {externalId: key.id, direction: "OUTBOUND", status: {in: allowedCurrent}},
+                data: {status: nextStatus}
             });
         }
     });

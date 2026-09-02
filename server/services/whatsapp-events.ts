@@ -9,6 +9,8 @@ export interface IncomingWhatsAppMessage {
     source?: "ADMIN" | "AI" | "WHATSAPP" | "CONTACT";
     pushName?: string | null;
     body: string;
+    type?: "text" | "image" | "document";
+    mediaUrl?: string | null;
     timestamp?: number;
 }
 
@@ -54,12 +56,14 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
         externalId: input.messageId || null,
         direction: input.fromMe ? "OUTBOUND" : "INBOUND",
         source: input.source || (input.fromMe ? "WHATSAPP" : "CONTACT"),
+        type: input.type || "text",
         body: input.body,
+        mediaUrl: input.mediaUrl || null,
         status: input.fromMe ? "SENT" : "RECEIVED",
         sentAt: at
     };
     const saved = input.messageId
-        ? await db.message.upsert({where: {externalId: input.messageId}, update: {status: data.status}, create: data})
+        ? await db.message.upsert({where: {externalId: input.messageId}, update: {status: data.status, type: data.type, mediaUrl: data.mediaUrl || undefined}, create: data})
         : await db.message.create({data});
     if (!input.fromMe) {
         const {dispatchUserWebhooks, runAutoReply} = await import("./automations");
