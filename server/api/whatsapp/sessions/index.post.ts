@@ -15,8 +15,10 @@ export default defineEventHandler(async (event) => {
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "نام اتصال معتبر نیست."});
     const instanceName = `hamrah-${String(auth.sub).slice(-8)}-${crypto.randomUUID().slice(0, 8)}`;
     const pending = await databaseAction(() => db.whatsAppSession.create({
-        data: {userId: String(auth.sub), externalId: instanceName, displayName: parsed.data.displayName,
-            status: "CONNECTING", provider: String(useRuntimeConfig().whatsappProvider), metadata: {instanceName}}
+        data: {
+            userId: String(auth.sub), externalId: instanceName, displayName: parsed.data.displayName,
+            status: "CONNECTING", provider: String(useRuntimeConfig().whatsappProvider), metadata: {instanceName}
+        }
     }));
     const provider = getWhatsAppProvider();
     const created = await provider.createSession(instanceName);

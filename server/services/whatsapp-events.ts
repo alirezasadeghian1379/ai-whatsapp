@@ -63,7 +63,11 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
         sentAt: at
     };
     const saved = input.messageId
-        ? await db.message.upsert({where: {externalId: input.messageId}, update: {status: data.status, type: data.type, mediaUrl: data.mediaUrl || undefined}, create: data})
+        ? await db.message.upsert({
+            where: {externalId: input.messageId},
+            update: {status: data.status, type: data.type, mediaUrl: data.mediaUrl || undefined},
+            create: data
+        })
         : await db.message.create({data});
     if (!input.fromMe) {
         const {dispatchUserWebhooks, runAutoReply} = await import("./automations");

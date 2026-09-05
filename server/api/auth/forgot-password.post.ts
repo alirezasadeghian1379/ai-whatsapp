@@ -2,11 +2,14 @@ import {createHash, randomBytes} from "node:crypto";
 import {z} from "zod";
 import {sendPasswordResetEmail} from "../../services/mail";
 import {db} from "../../utils/db";
+import {assertRateLimit} from "../../utils/rate-limit";
 
-const schema = z.object({email: z.string().email().toLowerCase()});
+const schema = z.object({email: z.string().email().max(254).toLowerCase()});
 export default defineEventHandler(async event => {
     const p = schema.safeParse(await readBody(event));
     if (!p.success) throw createError({statusCode: 422, statusMessage: "ایمیل معتبر نیست."});
+    assertRateLimit(event, "forgot-password-ip", {limit: 10, windowMs: 60 * 60_000});
+    assertRateLimit(event, "forgot-password-account", {limit: 3, windowMs: 60 * 60_000, identity: p.data.email, bindIp: false});
     const user = await db.user.findUnique({where: {email: p.data.email}});
     if (!user) return {success: true};
     const token = randomBytes(32).toString("base64url"), tokenHash = createHash("sha256").update(token).digest("hex");

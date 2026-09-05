@@ -1,5 +1,25 @@
 import nodemailer from "nodemailer";
-export async function sendContactEmail(input:{name:string;email:string;subject:string;message:string}){const c=useRuntimeConfig();if(!c.smtpHost||!c.smtpUser||!c.smtpPassword)throw createError({statusCode:503,statusMessage:"سرویس دریافت پیام هنوز توسط مدیر سامانه تنظیم نشده است."});const transport=nodemailer.createTransport({host:c.smtpHost,port:Number(c.smtpPort),secure:c.smtpSecure,auth:{user:c.smtpUser,pass:c.smtpPassword}});await transport.sendMail({from:c.mailFrom,to:c.smtpUser,replyTo:input.email,subject:`تماس با همراه‌چت: ${input.subject}`,text:`نام: ${input.name}\nایمیل: ${input.email}\n\n${input.message}`})}
+
+export async function sendContactEmail(input: { name: string; email: string; subject: string; message: string }) {
+    const c = useRuntimeConfig();
+    if (!c.smtpHost || !c.smtpUser || !c.smtpPassword) throw createError({
+        statusCode: 503,
+        statusMessage: "سرویس دریافت پیام هنوز توسط مدیر سامانه تنظیم نشده است."
+    });
+    const transport = nodemailer.createTransport({
+        host: c.smtpHost,
+        port: Number(c.smtpPort),
+        secure: c.smtpSecure,
+        auth: {user: c.smtpUser, pass: c.smtpPassword}
+    });
+    await transport.sendMail({
+        from: c.mailFrom,
+        to: c.smtpUser,
+        replyTo: input.email,
+        subject: `تماس با همراه‌چت: ${input.subject}`,
+        text: `نام: ${input.name}\nایمیل: ${input.email}\n\n${input.message}`
+    })
+}
 
 export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string) {
     const c = useRuntimeConfig();

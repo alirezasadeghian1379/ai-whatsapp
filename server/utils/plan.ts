@@ -3,17 +3,51 @@ import {db} from "./db";
 export type PlanLimit = "whatsapp" | "webhooks" | "messages" | "ai" | "contacts";
 export type PlanFeature = "whatsapp" | "webhooks" | "messages" | "ai" | "contacts" | "sms";
 
-export async function getPlanAccess(userId:string){
-    const user=await db.user.findUnique({where:{id:userId},select:{role:true}});
-    if(user&&["ADMIN","SUPER_ADMIN"].includes(user.role))return{isAdmin:true,plan:null,features:{whatsapp:true,webhooks:true,messages:true,ai:true,contacts:true,sms:true}};
-    const active=await db.subscription.findFirst({where:{userId,status:"ACTIVE",OR:[{endsAt:null},{endsAt:{gt:new Date()}}]},include:{plan:true},orderBy:{endsAt:"desc"}});
-    const plan=active?.plan;
-    return{isAdmin:false,plan:plan?{id:plan.id,name:plan.name,slug:plan.slug}:null,features:{whatsapp:!!plan&&plan.maxWhatsAppConnections>0,webhooks:!!plan&&plan.maxWebhooks>0,messages:!!plan&&plan.maxMessages>0,ai:!!plan&&plan.maxAIRequests>0,contacts:!!plan&&plan.maxContacts>0,sms:!!plan&&plan.slug!=="free"}};
+const unlimitedLimits = {whatsapp: null, webhooks: null, messages: null, ai: null, contacts: null};
+
+export async function getPlanAccess(userId: string) {
+    const user = await db.user.findUnique({where: {id: userId}, select: {role: true}});
+    if (user && ["ADMIN", "SUPER_ADMIN"].includes(user.role)) return {
+        isAdmin: true,
+        plan: null,
+        features: {whatsapp: true, webhooks: true, messages: true, ai: true, contacts: true, sms: true},
+        limits: unlimitedLimits
+    };
+    const active = await db.subscription.findFirst({
+        where: {
+            userId,
+            status: "ACTIVE",
+            OR: [{endsAt: null}, {endsAt: {gt: new Date()}}]
+        }, include: {plan: true}, orderBy: {endsAt: "desc"}
+    });
+    const plan = active?.plan;
+    return {
+        isAdmin: false,
+        plan: plan ? {id: plan.id, name: plan.name, slug: plan.slug} : null,
+        features: {
+            whatsapp: !!plan && plan.maxWhatsAppConnections > 0,
+            webhooks: false,
+            messages: !!plan && plan.maxMessages > 0,
+            ai: !!plan && plan.maxAIRequests > 0,
+            contacts: !!plan && plan.maxContacts > 0,
+            sms: false
+        },
+        limits: {
+            whatsapp: plan?.maxWhatsAppConnections ?? 0,
+            webhooks: 0,
+            messages: plan?.maxMessages ?? 0,
+            ai: plan?.maxAIRequests ?? 0,
+            contacts: plan?.maxContacts ?? 0
+        }
+    };
 }
 
-export async function assertPlanFeature(userId:string,feature:PlanFeature){
-    const access=await getPlanAccess(userId);
-    if(!access.features[feature])throw createError({statusCode:403,statusMessage:"این قابلیت در اشتراک فعلی شما فعال نیست؛ برای دسترسی پلن خود را ارتقا دهید."});
+export async function assertPlanFeature(userId: string, feature: PlanFeature) {
+    const access = await getPlanAccess(userId);
+    if (!access.features[feature]) throw createError({
+        statusCode: 403,
+        statusMessage: "این قابلیت در اشتراک فعلی شما فعال نیست؛ برای دسترسی پلن خود را ارتقا دهید."
+    });
     return access;
 }
 
@@ -46,7 +80,13 @@ export async function assertPlanLimit(userId: string, limit: PlanLimit) {
         start.setDate(1);
         start.setHours(0, 0, 0, 0);
         if (limit === "messages") {
-            used = await db.message.count({where: {conversation: {userId}, createdAt: {gte: start}}});
+            used = await db.message.count({
+                where: {
+                    conversation: {userId},
+                    direction: "OUTBOUND",
+                    createdAt: {gte: start}
+                }
+            });
             max = subscription.plan.maxMessages
         } else {
             used = (await db.usage.findFirst({where: {userId, periodStart: {gte: start}}}))?.aiRequests || 0;

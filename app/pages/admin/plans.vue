@@ -11,7 +11,7 @@ const empty = () => ({
   durationDays: 30,
   maxWhatsAppConnections: 1,
   maxMessages: 500,
-  maxWebhooks: 1,
+  maxWebhooks: 0,
   maxAIRequests: 100,
   maxContacts: 250,
   features: "",
@@ -51,8 +51,7 @@ async function save(p: any) {
           v-model.number="p.price" class="input" type="number">
         <div class="grid grid-cols-2 gap-2"><label class="text-xs">واتساپ<input
             v-model.number="p.maxWhatsAppConnections" class="input mt-1" type="number"></label><label class="text-xs">پیام<input
-            v-model.number="p.maxMessages" class="input mt-1" type="number"></label><label class="text-xs">Webhook<input
-            v-model.number="p.maxWebhooks" class="input mt-1" type="number"></label><label class="text-xs">AI<input
+            v-model.number="p.maxMessages" class="input mt-1" type="number"></label><label class="text-xs">AI<input
             v-model.number="p.maxAIRequests" class="input mt-1" type="number"></label></div>
         <label class="flex gap-2 text-sm"><input v-model="p.isActive" type="checkbox">فعال</label>
         <button class="btn btn-secondary w-full" @click="save(p)">
@@ -70,7 +69,6 @@ async function save(p: any) {
           v-model.number="form.durationDays" class="input" type="number" placeholder="مدت"><input
           v-model.number="form.maxWhatsAppConnections" class="input" type="number" placeholder="واتساپ"><input
           v-model.number="form.maxMessages" class="input" type="number" placeholder="پیام"><input
-          v-model.number="form.maxWebhooks" class="input" type="number" placeholder="وب‌هوک"><input
           v-model.number="form.maxAIRequests" class="input" type="number" placeholder="AI"><input
           v-model.number="form.maxContacts" class="input" type="number" placeholder="مخاطب"><textarea
           v-model="form.features" class="input sm:col-span-2" placeholder="هر امکان در یک خط"/>

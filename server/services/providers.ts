@@ -12,7 +12,14 @@ export interface WhatsAppProvider {
     disconnect(instanceName: string): Promise<Result<void>>;
 
     sendMessage(instanceName: string, to: string, body: string): Promise<Result<{ messageId: string }>>;
-    sendMedia(instanceName: string, to: string, media: {data: Buffer; mimeType: string; fileName: string; caption?: string}): Promise<Result<{messageId:string}>>;
+
+    sendMedia(instanceName: string, to: string, media: {
+        data: Buffer;
+        mimeType: string;
+        fileName: string;
+        caption?: string;
+        voiceNote?: boolean
+    }): Promise<Result<{ messageId: string }>>;
 
     markRead(instanceName: string, to: string, messageIds: string[]): Promise<Result<void>>;
 
@@ -68,12 +75,18 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
         }
     }
 
-    async sendMedia(instanceName: string, to: string, media: {data:Buffer;mimeType:string;fileName:string;caption?:string}) {
+    async sendMedia(instanceName: string, to: string, media: {
+        data: Buffer;
+        mimeType: string;
+        fileName: string;
+        caption?: string;
+        voiceNote?: boolean
+    }) {
         try {
             const {sendBaileysMedia} = await import("./baileys-manager");
-            return {ok:true as const,data:{messageId:await sendBaileysMedia(instanceName,to,media)}};
-        } catch(error) {
-            return {ok:false as const,error:error instanceof Error?error.message:"فایل واتساپ ارسال نشد."};
+            return {ok: true as const, data: {messageId: await sendBaileysMedia(instanceName, to, media)}};
+        } catch (error) {
+            return {ok: false as const, error: error instanceof Error ? error.message : "فایل واتساپ ارسال نشد."};
         }
     }
 
@@ -83,7 +96,10 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
             await markBaileysMessagesRead(instanceName, to, messageIds);
             return {ok: true as const, data: undefined};
         } catch (error) {
-            return {ok: false as const, error: error instanceof Error ? error.message : "ثبت خواندن پیام‌ها انجام نشد."};
+            return {
+                ok: false as const,
+                error: error instanceof Error ? error.message : "ثبت خواندن پیام‌ها انجام نشد."
+            };
         }
     }
 
@@ -204,13 +220,21 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
         };
     }
 
-    async sendMedia() { return {ok:false as const,error:"ارسال فایل برای Evolution هنوز تنظیم نشده است."}; }
+    async sendMedia() {
+        return {ok: false as const, error: "ارسال فایل برای Evolution هنوز تنظیم نشده است."};
+    }
 
     async markRead(instanceName: string, to: string, messageIds: string[]) {
         if (!messageIds.length) return {ok: true as const, data: undefined};
         const result = await this.request<EvolutionResponse>(`/chat/markMessageAsRead/${encodeURIComponent(instanceName)}`, {
             method: "POST",
-            body: {readMessages: messageIds.map(id => ({remoteJid: `${to.replace(/\D/g, "")}@s.whatsapp.net`, fromMe: false, id}))}
+            body: {
+                readMessages: messageIds.map(id => ({
+                    remoteJid: `${to.replace(/\D/g, "")}@s.whatsapp.net`,
+                    fromMe: false,
+                    id
+                }))
+            }
         });
         return result.ok ? {ok: true as const, data: undefined} : result;
     }
@@ -254,40 +278,11 @@ export function getWhatsAppProvider(): WhatsAppProvider {
     return new EvolutionWhatsAppProvider(config.whatsappApiUrl, config.whatsappApiKey, proxy);
 }
 
-export class OpenAIProvider implements AIProvider {
+export class GroqProvider implements AIProvider {
     constructor(private readonly apiKey: string, private readonly model: string) {
     }
 
     async complete(input: { systemPrompt: string; message: string; temperature?: number; maxTokens?: number }) {
-        try {
-            const response = await fetch("https://api.openai.com/v1/responses", {
-                method: "POST",
-                headers: {authorization: `Bearer ${this.apiKey}`, "content-type": "application/json"},
-                body: JSON.stringify({
-                    model: this.model,
-                    instructions: input.systemPrompt,
-                    input: input.message,
-                    temperature: input.temperature,
-                    max_output_tokens: input.maxTokens || 500,
-                    store: false
-                }),
-                signal: AbortSignal.timeout(30_000)
-            });
-            const data = await response.json() as any;
-            if (!response.ok) return {ok: false as const, error: data.error?.message || "سرویس هوش مصنوعی پاسخ نداد."};
-            const text = data.output_text ?? data.output?.flatMap((item: any) => item.content || []).find((item: any) => item.type === "output_text")?.text;
-            if (!text) return {ok: false as const, error: "پاسخ متنی از سرویس AI دریافت نشد."};
-            return {ok: true as const, data: {text: String(text), tokens: Number(data.usage?.total_tokens || 0)}};
-        } catch {
-            return {ok: false as const, error: "ارتباط با سرویس هوش مصنوعی برقرار نشد."};
-        }
-    }
-}
-
-export class GroqProvider implements AIProvider {
-    constructor(private readonly apiKey: string, private readonly model: string) {}
-
-    async complete(input: {systemPrompt: string; message: string; temperature?: number; maxTokens?: number}) {
         try {
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -316,7 +311,6 @@ export class GroqProvider implements AIProvider {
 
 export function getAIProvider(provider: string, apiKey: string, model: string): AIProvider {
     if (provider === "groq") return new GroqProvider(apiKey, model);
-    if (provider === "openai") return new OpenAIProvider(apiKey, model);
     throw createError({statusCode: 422, statusMessage: "ارائه‌دهنده هوش مصنوعی پشتیبانی نمی‌شود."});
 }
 

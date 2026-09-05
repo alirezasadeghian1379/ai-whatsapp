@@ -1,2 +1,11 @@
-<script setup lang="ts">defineProps<{label:string;value:string|number;description?:string}>()</script>
-<template><article class="surface card-hover p-5"><div class="flex items-center justify-between text-sm text-slate-400"><span>{{label}}</span><span v-if="$slots.icon" class="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10"><slot name="icon"/></span></div><b class="mt-4 block text-2xl">{{value}}</b><small v-if="description" class="mt-2 block text-slate-400">{{description}}</small></article></template>
+<script setup lang="ts">defineProps<{ label: string; value: string | number; description?: string }>()</script>
+<template>
+  <article class="surface card-hover p-5">
+    <div class="flex items-center justify-between text-sm text-slate-400"><span>{{ label }}</span><span
+        v-if="$slots.icon"
+        class="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10"><slot
+        name="icon"/></span></div>
+    <b class="mt-4 block text-2xl">{{ value }}</b><small v-if="description"
+                                                         class="mt-2 block text-slate-400">{{ description }}</small>
+  </article>
+</template>

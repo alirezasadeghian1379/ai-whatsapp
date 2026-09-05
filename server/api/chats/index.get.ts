@@ -1,8 +1,10 @@
 import {requireSession} from "../../utils/auth";
 import {db} from "../../utils/db";
+import {assertPlanFeature} from "../../utils/plan";
 
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), query = getQuery(event), search = String(query.search || "").trim();
+    await assertPlanFeature(String(auth.sub), "messages");
     const conversations = await db.conversation.findMany({
         where: {
             userId: String(auth.sub),

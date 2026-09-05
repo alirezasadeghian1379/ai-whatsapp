@@ -40,7 +40,9 @@ async function submit() {
     </div>
     <div class="mb-6 flex items-center justify-between text-xs text-slate-500"><label
         class="flex items-center gap-2"><input v-model="form.remember" type="checkbox"
-                                               class="accent-brand-600">{{ tr('مرا به خاطر بسپار', 'Remember me') }}</label>
+                                               class="accent-brand-600">{{
+        tr('مرا به خاطر بسپار', 'Remember me')
+      }}</label>
       <NuxtLink to="/forgot-password" class="font-bold text-brand-600">
         {{ tr('فراموشی رمز عبور', 'Forgot password?') }}
       </NuxtLink>

@@ -7,7 +7,7 @@ import makeWASocket, {
     type WASocket,
     type WAMessage
 } from "@whiskeysockets/baileys";
-import {mkdir,rm,writeFile} from "node:fs/promises";
+import {mkdir, rename, rm, writeFile} from "node:fs/promises";
 import {join, resolve} from "node:path";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -20,9 +20,13 @@ type Runtime = {
     state: string;
     qr: string | null;
     starting?: Promise<void>;
-    reconnectTimer?: ReturnType<typeof setTimeout>
+    reconnectTimer?: ReturnType<typeof setTimeout>;
+    reconnectAttempts: number;
+    recoveringLoggedOut?: boolean
 };
-const runtimes = new Map<string, Runtime>();
+const globalBaileys = globalThis as typeof globalThis & { __hamrahBaileysRuntimes?: Map<string, Runtime> };
+const runtimes = globalBaileys.__hamrahBaileysRuntimes ?? new Map<string, Runtime>();
+globalBaileys.__hamrahBaileysRuntimes = runtimes;
 const storageRoot = resolve(process.cwd(), "storage", "whatsapp");
 
 function safeName(value: string) {
@@ -58,7 +62,13 @@ async function saveIncomingMedia(message: WAMessage) {
     const size = Number(media.fileLength || 0);
     if (size > 10 * 1024 * 1024) return null;
     const mime = media.mimetype || (image ? "image/jpeg" : "application/octet-stream");
-    const extensions: Record<string, string> = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf", "text/plain": ".txt"};
+    const extensions: Record<string, string> = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "application/pdf": ".pdf",
+        "text/plain": ".txt"
+    };
     const extension = extensions[mime];
     if (!extension) return null;
     const data = await downloadMediaMessage(message, "buffer", {});
@@ -85,7 +95,12 @@ async function updateConnection(instanceName: string, state: string, phone?: str
         data: {
             status,
             phoneNumber: phone || session.phoneNumber,
-            ...(status === "CONNECTED" ? {metadata: {...(session.metadata as object || {}), explicitDisconnected: false}} : {}),
+            ...(status === "CONNECTED" ? {
+                metadata: {
+                    ...(session.metadata as object || {}),
+                    explicitDisconnected: false
+                }
+            } : {}),
             connectedAt: status === "CONNECTED" ? (session.connectedAt || new Date()) : session.connectedAt,
             lastSeenAt: new Date()
         }
@@ -123,18 +138,42 @@ async function boot(instanceName: string, runtime: Runtime) {
     runtime.state = "connecting";
     socket.ev.on("creds.update", saveCreds);
     socket.ev.on("connection.update", async update => {
+        // Events from a replaced socket must never mutate the current runtime
+        // or start another reconnect loop.
+        if (runtime.socket !== socket) return;
         if (update.qr) runtime.qr = await QRCode.toDataURL(update.qr, {margin: 1, width: 360});
         if (update.connection) runtime.state = update.connection;
         if (update.connection === "open") {
+            clearTimeout(runtime.reconnectTimer);
+            runtime.reconnectTimer = undefined;
+            runtime.reconnectAttempts = 0;
+            runtime.recoveringLoggedOut = false;
             runtime.qr = null;
             await updateConnection(instanceName, "open", socket.user?.id?.split(":")[0]);
         }
         if (update.connection === "close") {
             const code = (update.lastDisconnect?.error as any)?.output?.statusCode;
             await updateConnection(instanceName, "close", undefined, code === DisconnectReason.loggedOut);
-            if (code !== DisconnectReason.loggedOut) {
+            if (runtime.socket !== socket) return;
+            if (code === DisconnectReason.loggedOut && !runtime.recoveringLoggedOut) {
+                runtime.recoveringLoggedOut = true;
+                const authDirectory = resolve(storageRoot, safeName(instanceName));
+                const backupDirectory = resolve(storageRoot, `${safeName(instanceName)}-logged-out-${Date.now()}`);
+                if (authDirectory.startsWith(`${storageRoot}\\`) || authDirectory.startsWith(`${storageRoot}/`)) {
+                    await rename(authDirectory, backupDirectory).catch(() => undefined);
+                }
+                runtime.reconnectTimer = setTimeout(() => {
+                    runtime.reconnectTimer = undefined;
+                    if (runtime.socket === socket) void startBaileysSession(instanceName, true);
+                }, 1_000);
+            } else if (code !== DisconnectReason.loggedOut) {
                 clearTimeout(runtime.reconnectTimer);
-                runtime.reconnectTimer = setTimeout(() => void startBaileysSession(instanceName, true), 1500);
+                runtime.reconnectAttempts += 1;
+                const delay = Math.min(60_000, 2_000 * 2 ** Math.min(runtime.reconnectAttempts - 1, 5));
+                runtime.reconnectTimer = setTimeout(() => {
+                    runtime.reconnectTimer = undefined;
+                    if (runtime.socket === socket && runtime.state === "close") void startBaileysSession(instanceName, true);
+                }, delay);
             }
         }
     });
@@ -195,14 +234,17 @@ async function boot(instanceName: string, runtime: Runtime) {
 export async function startBaileysSession(instanceName: string, force = false) {
     let runtime = runtimes.get(instanceName);
     if (!runtime) {
-        runtime = {state: "connecting", qr: null};
+        runtime = {state: "connecting", qr: null, reconnectAttempts: 0};
         runtimes.set(instanceName, runtime);
     }
     if (runtime.state === "close" && !runtime.starting) force = true;
     if (force) {
-        runtime.socket?.end(undefined);
+        clearTimeout(runtime.reconnectTimer);
+        runtime.reconnectTimer = undefined;
+        const previousSocket = runtime.socket;
         runtime.socket = undefined;
         runtime.starting = undefined;
+        previousSocket?.end(undefined);
     }
     if (!runtime.socket && !runtime.starting) runtime.starting = boot(instanceName, runtime).finally(() => {
         runtime!.starting = undefined;
@@ -226,15 +268,23 @@ export async function sendBaileysMessage(instanceName: string, to: string, body:
     return result?.key.id || crypto.randomUUID();
 }
 
-export async function sendBaileysMedia(instanceName:string,to:string,media:{data:Buffer;mimeType:string;fileName:string;caption?:string}) {
-    const runtime=await startBaileysSession(instanceName);
-    if(runtime.state!=="open"||!runtime.socket)throw new Error("واتساپ هنوز متصل نیست.");
-    const jid=`${to.replace(/\D/g,"")}@s.whatsapp.net`;
-    const content=media.mimeType.startsWith("image/")
-        ? {image:media.data,caption:media.caption,mimetype:media.mimeType}
-        : {document:media.data,fileName:media.fileName,mimetype:media.mimeType,caption:media.caption};
-    const result=await runtime.socket.sendMessage(jid,content as any);
-    return result?.key.id||crypto.randomUUID();
+export async function sendBaileysMedia(instanceName: string, to: string, media: {
+    data: Buffer;
+    mimeType: string;
+    fileName: string;
+    caption?: string;
+    voiceNote?: boolean
+}) {
+    const runtime = await startBaileysSession(instanceName);
+    if (runtime.state !== "open" || !runtime.socket) throw new Error("واتساپ هنوز متصل نیست.");
+    const jid = `${to.replace(/\D/g, "")}@s.whatsapp.net`;
+    const content = media.voiceNote
+        ? {audio: media.data, mimetype: media.mimeType, ptt: true}
+        : media.mimeType.startsWith("image/")
+            ? {image: media.data, caption: media.caption, mimetype: media.mimeType}
+            : {document: media.data, fileName: media.fileName, mimetype: media.mimeType, caption: media.caption};
+    const result = await runtime.socket.sendMessage(jid, content as any);
+    return result?.key.id || crypto.randomUUID();
 }
 
 export async function markBaileysMessagesRead(instanceName: string, to: string, messageIds: string[]) {

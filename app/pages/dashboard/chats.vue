@@ -37,7 +37,7 @@ async function syncActiveConversation() {
   syncing.value = true;
   try {
     const previousCount = detail.value?.messages.length || 0;
-    const result = await $fetch<{conversation: ChatDetail}>(`/api/chats/${selectedId.value}`);
+    const result = await $fetch<{ conversation: ChatDetail }>(`/api/chats/${selectedId.value}`);
     detail.value = result.conversation;
     if (result.conversation.messages.length !== previousCount) {
       await nextTick();
@@ -50,13 +50,17 @@ async function syncActiveConversation() {
   }
 }
 
-async function send(file?:File) {
-  if (!selectedId.value || (!text.value.trim()&&!file)) return;
+async function send(file?: File) {
+  if (!selectedId.value || (!text.value.trim() && !file)) return;
   busy.value = true;
   error.value = "";
   try {
-    if(file){const body=new FormData();body.append("file",file);if(text.value.trim())body.append("caption",text.value.trim());await $fetch(`/api/chats/${selectedId.value}/media`,{method:"POST",body})}
-    else await $fetch(`/api/chats/${selectedId.value}/send`, {method: "POST", body: {body: text.value}});
+    if (file) {
+      const body = new FormData();
+      body.append("file", file);
+      if (text.value.trim()) body.append("caption", text.value.trim());
+      await $fetch(`/api/chats/${selectedId.value}/media`, {method: "POST", body})
+    } else await $fetch(`/api/chats/${selectedId.value}/send`, {method: "POST", body: {body: text.value}});
     text.value = "";
     await select(selectedId.value)
   } catch (e: any) {
@@ -106,7 +110,8 @@ onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>
   <div>
-    <PageHeader :title="tr('گفتگوها','Conversations')" :description="tr('پیام‌های واقعی واتساپ را مدیریت و پاسخ دهید.','Manage and reply to WhatsApp messages.')">
+    <PageHeader :title="tr('گفتگوها','Conversations')"
+                :description="tr('پیام‌های واقعی واتساپ را مدیریت و پاسخ دهید.','Manage and reply to WhatsApp messages.')">
       <button class="btn btn-secondary gap-2" @click="archived=!archived">
         <component :is="archived?Inbox:Archive" :size="17"/>
         {{ archived ? tr('صندوق ورودی', 'Inbox') : tr('بایگانی‌شده‌ها', 'Archived') }}
@@ -114,15 +119,20 @@ onBeforeUnmount(() => clearInterval(timer));
     </PageHeader>
     <UiFeedback v-if="error" class="mb-4" type="error" :message="error"/>
     <section class="surface grid min-h-[680px] overflow-hidden lg:grid-cols-[320px_1fr_260px]">
-      <ChatConversationList v-model:search="search" :items="conversations" :selected-id="selectedId" :pending="status==='pending'" :format-time="time" @select="select"/>
+      <ChatConversationList v-model:search="search" :items="conversations" :selected-id="selectedId"
+                            :pending="status==='pending'" :format-time="time" @select="select"/>
       <div v-if="detail" class="flex min-w-0 flex-col">
-        <ChatHeader :conversation="detail" :busy="stateBusy" @pin="changeState({isPinned:!detail.isPinned})" @archive="changeState({isArchived:!detail.isArchived})"/>
-        <div ref="messagesEl" class="max-h-[530px] flex-1 space-y-4 overflow-auto bg-slate-50/60 p-5 dark:bg-slate-950/50">
-          <ChatMessageBubble v-for="m in detail.messages" :key="m.id" :message="m" :formatted-time="time(m.sentAt||m.createdAt)"/>
+        <ChatHeader :conversation="detail" :busy="stateBusy" @pin="changeState({isPinned:!detail.isPinned})"
+                    @archive="changeState({isArchived:!detail.isArchived})"/>
+        <div ref="messagesEl"
+             class="max-h-[530px] flex-1 space-y-4 overflow-auto bg-slate-50/60 p-5 dark:bg-slate-950/50">
+          <ChatMessageBubble v-for="m in detail.messages" :key="m.id" :message="m"
+                             :formatted-time="time(m.sentAt||m.createdAt)"/>
         </div>
         <ChatComposer v-model="text" :busy="busy" :disabled="detail.session.status!=='CONNECTED'" @send="send"/>
       </div>
-      <UiEmptyState v-else class="lg:col-span-2" :title="tr('یک گفتگو را انتخاب کنید.','Select a conversation.')" :description="tr('پیام‌ها و اطلاعات مخاطب اینجا نمایش داده می‌شود.','Messages and contact details will appear here.')">
+      <UiEmptyState v-else class="lg:col-span-2" :title="tr('یک گفتگو را انتخاب کنید.','Select a conversation.')"
+                    :description="tr('پیام‌ها و اطلاعات مخاطب اینجا نمایش داده می‌شود.','Messages and contact details will appear here.')">
         <template #icon>
           <UserRound :size="30"/>
         </template>

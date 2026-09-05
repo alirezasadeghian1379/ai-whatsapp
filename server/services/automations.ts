@@ -3,6 +3,9 @@ import {getAIProvider, getWhatsAppProvider} from "./providers";
 import {decryptSecret} from "../utils/crypto";
 import {db} from "../utils/db";
 import {assertPlanLimit, getPlanAccess} from "../utils/plan";
+import {synthesizeSpeech} from "./text-to-speech";
+import {mkdir, writeFile} from "node:fs/promises";
+import {join} from "node:path";
 
 export async function dispatchUserWebhooks(userId: string, event: string, data: unknown) {
     const access = await getPlanAccess(userId);
@@ -70,7 +73,9 @@ export async function runAutoReply(input: {
             autoReply: true
         }
     });
-    if (!config?.apiKeyEncrypted) return;
+    // Legacy OpenAI configurations are intentionally disabled. The user must
+    // save a Groq configuration and API key before automatic replies resume.
+    if (!config?.apiKeyEncrypted || config.provider !== "groq") return;
     if (config.delaySeconds) await new Promise(resolve => setTimeout(resolve, Math.min(config.delaySeconds, 30) * 1000));
     const completion = await getAIProvider(config.provider, decryptSecret(config.apiKeyEncrypted), config.model).complete({
         systemPrompt: config.systemPrompt,
@@ -80,15 +85,47 @@ export async function runAutoReply(input: {
     });
     const body = completion.ok ? completion.data.text : config.fallbackMessage;
     if (!body) return;
-    const sent = await getWhatsAppProvider().sendMessage(input.sessionExternalId, input.phone, body);
+    const whatsapp = getWhatsAppProvider();
+    let sent;
+    let messageType = "text";
+    let speechData: Buffer | null = null;
+    if (completion.ok && config.voiceReplyEnabled) {
+        const speech = await synthesizeSpeech(body, config.voiceModel);
+        if (speech.ok) {
+            const voiceMessage = await whatsapp.sendMedia(input.sessionExternalId, input.phone, {
+                ...speech.data,
+                voiceNote: true
+            });
+            if (voiceMessage.ok) {
+                sent = voiceMessage;
+                messageType = "audio";
+                speechData = speech.data.data;
+            }
+        }
+    }
+    sent ??= await whatsapp.sendMessage(input.sessionExternalId, input.phone, body);
     if (!sent.ok) return;
+    let mediaUrl: string | null = null;
+    if (messageType === "audio" && speechData) {
+        const storedName = `${crypto.randomUUID()}.ogg`;
+        const directory = join(process.cwd(), "storage", "chat-media");
+        try {
+            await mkdir(directory, {recursive: true});
+            await writeFile(join(directory, storedName), speechData);
+            mediaUrl = storedName;
+        } catch {
+            // Sending the reply is more important than local playback history.
+        }
+    }
     const message = await db.message.create({
         data: {
             conversationId: input.conversationId,
             externalId: sent.data.messageId,
             direction: "OUTBOUND",
             source: "AI",
+            type: messageType,
             body,
+            mediaUrl,
             status: "SENT",
             sentAt: new Date()
         }
@@ -107,6 +144,7 @@ export async function runAutoReply(input: {
         conversationId: input.conversationId,
         phone: input.phone,
         body,
-        automated: true
+        automated: true,
+        type: messageType
     });
 }

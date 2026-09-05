@@ -1,2 +1,61 @@
-<script setup lang="ts">import{AlertCircle,CheckCircle2,LoaderCircle,Send}from"lucide-vue-next";const{tr}=useAppPreferences(),route=useRoute();const form=reactive({name:'',email:'',subject:typeof route.query.subject==='string'?route.query.subject:'',message:''}),busy=ref(false),done=ref(false),error=ref('');async function submit(){busy.value=true;done.value=false;error.value='';try{await $fetch('/api/contact',{method:'POST',body:form});done.value=true;Object.assign(form,{name:'',email:'',subject:'',message:''})}catch(e:any){error.value=e.data?.statusMessage||tr('ارسال پیام ناموفق بود.','Could not send message.')}finally{busy.value=false}}</script>
-<template><div><PublicHeader/><main class="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[.8fr_1.2fr]"><section><span class="badge bg-brand-50 text-brand-700">{{tr('تماس با ما','Contact us')}}</span><h1 class="mt-5 text-4xl font-black">{{tr('چطور می‌توانیم کمک کنیم؟','How can we help?')}}</h1><p class="muted mt-5 leading-8">{{tr('پرسش فنی، پیشنهاد همکاری یا نیاز به راهنمایی دارید؟ پیام شما مستقیماً برای تیم پشتیبانی ارسال می‌شود.','Technical question, partnership idea or need help? Your message goes directly to support.')}}</p></section><form class="surface space-y-4 p-6 sm:p-8" @submit.prevent="submit"><div v-if="done" class="flex gap-2 rounded-xl bg-emerald-50 p-3 text-emerald-700"><CheckCircle2 :size="19"/>{{tr('پیام شما ارسال شد.','Your message was sent.')}}</div><div v-if="error" class="flex gap-2 rounded-xl bg-red-50 p-3 text-red-700"><AlertCircle :size="19"/>{{error}}</div><div class="grid gap-4 sm:grid-cols-2"><label><span class="label">{{tr('نام','Name')}}</span><input v-model="form.name" class="input" required minlength="2"></label><label><span class="label">{{tr('ایمیل','Email')}}</span><input v-model="form.email" class="input" type="email" dir="ltr" required></label></div><label class="block"><span class="label">{{tr('موضوع','Subject')}}</span><input v-model="form.subject" class="input" required minlength="3"></label><label class="block"><span class="label">{{tr('پیام','Message')}}</span><textarea v-model="form.message" class="input min-h-40" required minlength="10"/></label><button class="btn btn-primary" :disabled="busy"><LoaderCircle v-if="busy" class="animate-spin" :size="17"/><Send v-else :size="17"/>{{tr('ارسال پیام','Send message')}}</button></form></main></div></template>
+<script setup lang="ts">import {AlertCircle, CheckCircle2, LoaderCircle, Send} from "lucide-vue-next";
+
+const {tr} = useAppPreferences(), route = useRoute();
+const form = reactive({
+  name: '',
+  email: '',
+  subject: typeof route.query.subject === 'string' ? route.query.subject : '',
+  message: ''
+}), busy = ref(false), done = ref(false), error = ref('');
+
+async function submit() {
+  busy.value = true;
+  done.value = false;
+  error.value = '';
+  try {
+    await $fetch('/api/contact', {method: 'POST', body: form});
+    done.value = true;
+    Object.assign(form, {name: '', email: '', subject: '', message: ''})
+  } catch (e: any) {
+    error.value = e.data?.statusMessage || tr('ارسال پیام ناموفق بود.', 'Could not send message.')
+  } finally {
+    busy.value = false
+  }
+}</script>
+<template>
+  <div>
+    <PublicHeader/>
+    <main class="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[.8fr_1.2fr]">
+      <section><span class="badge bg-brand-50 text-brand-700">{{ tr('تماس با ما', 'Contact us') }}</span>
+        <h1 class="mt-5 text-4xl font-black">{{ tr('چطور می‌توانیم کمک کنیم؟', 'How can we help?') }}</h1>
+        <p class="muted mt-5 leading-8">
+          {{ tr('پرسش فنی، پیشنهاد همکاری یا نیاز به راهنمایی دارید؟ پیام شما مستقیماً برای تیم پشتیبانی ارسال می‌شود.', 'Technical question, partnership idea or need help? Your message goes directly to support.') }}</p>
+      </section>
+      <form class="surface space-y-4 p-6 sm:p-8" @submit.prevent="submit">
+        <div v-if="done" class="flex gap-2 rounded-xl bg-emerald-50 p-3 text-emerald-700">
+          <CheckCircle2 :size="19"/>
+          {{ tr('پیام شما ارسال شد.', 'Your message was sent.') }}
+        </div>
+        <div v-if="error" class="flex gap-2 rounded-xl bg-red-50 p-3 text-red-700">
+          <AlertCircle :size="19"/>
+          {{ error }}
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2"><label><span class="label">{{ tr('نام', 'Name') }}</span><input
+            v-model="form.name" class="input" required minlength="2"></label><label><span
+            class="label">{{ tr('ایمیل', 'Email') }}</span><input v-model="form.email" class="input" type="email"
+                                                                  dir="ltr" required></label></div>
+        <label class="block"><span class="label">{{ tr('موضوع', 'Subject') }}</span><input v-model="form.subject"
+                                                                                           class="input" required
+                                                                                           minlength="3"></label><label
+          class="block"><span class="label">{{ tr('پیام', 'Message') }}</span><textarea v-model="form.message"
+                                                                                        class="input min-h-40" required
+                                                                                        minlength="10"/></label>
+        <button class="btn btn-primary" :disabled="busy">
+          <LoaderCircle v-if="busy" class="animate-spin" :size="17"/>
+          <Send v-else :size="17"/>
+          {{ tr('ارسال پیام', 'Send message') }}
+        </button>
+      </form>
+    </main>
+  </div>
+</template>

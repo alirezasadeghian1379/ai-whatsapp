@@ -1,4 +1,4 @@
-<script setup lang="ts">import {Bot, CreditCard, MessageCircle, Smartphone, Users, Webhook} from "lucide-vue-next";
+<script setup lang="ts">import {Bot, CreditCard, MessageCircle, Smartphone, Users} from "lucide-vue-next";
 
 definePageMeta({layout: "admin", middleware: "admin"});
 const {data, status} = await useFetch<any>("/api/admin/overview");
@@ -14,7 +14,7 @@ const cards = computed(() => [{l: "کل کاربران", v: data.value?.users, i
   l: "مصرف AI",
   v: data.value?.ai,
   i: Bot
-}, {l: "وب‌هوک فعال", v: data.value?.webhooks, i: Webhook}, {
+}, {
   l: "درآمد",
   v: new Intl.NumberFormat().format(data.value?.revenue || 0) + " تومان",
   i: CreditCard
@@ -24,7 +24,11 @@ const cards = computed(() => [{l: "کل کاربران", v: data.value?.users, i
     <PageHeader title="داشبورد مدیریت" description="آمار واقعی کل سامانه"/>
     <UiLoadingState v-if="status==='pending'"/>
     <section v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <UiStatCard v-for="x in cards" :key="x.l" :label="x.l" :value="x.v??0"><template #icon><component :is="x.i" :size="20"/></template></UiStatCard>
+      <UiStatCard v-for="x in cards" :key="x.l" :label="x.l" :value="x.v??0">
+        <template #icon>
+          <component :is="x.i" :size="20"/>
+        </template>
+      </UiStatCard>
     </section>
   </div>
 </template>

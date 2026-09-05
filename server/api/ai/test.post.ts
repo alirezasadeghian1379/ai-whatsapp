@@ -11,6 +11,10 @@ export default defineEventHandler(async (event) => {
     await assertPlanLimit(String(auth.sub), "ai");
     if (!parsed.success) throw createError({statusCode: 422});
     const config = await db.aIConfiguration.findFirst({where: {userId: String(auth.sub)}});
+    if (config && config.provider !== "groq") throw createError({
+        statusCode: 409,
+        statusMessage: "تنظیمات قبلی دیگر پشتیبانی نمی‌شود؛ لطفاً کلید API سرویس Groq را ذخیره کنید."
+    });
     if (!config?.apiKeyEncrypted) throw createError({
         statusCode: 409,
         statusMessage: "ابتدا تنظیمات و API Key هوش مصنوعی را ذخیره کنید."
@@ -22,5 +26,14 @@ export default defineEventHandler(async (event) => {
         maxTokens: config.maxTokens
     });
     if (!result.ok) throw createError({statusCode: 502, statusMessage: result.error});
+    const periodStart = new Date();
+    periodStart.setDate(1);
+    periodStart.setHours(0, 0, 0, 0);
+    const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 1);
+    await db.usage.upsert({
+        where: {userId_periodStart: {userId: String(auth.sub), periodStart}},
+        update: {aiRequests: {increment: 1}},
+        create: {userId: String(auth.sub), periodStart, periodEnd, aiRequests: 1}
+    });
     return result.data;
 });

@@ -5,8 +5,8 @@ import {db} from "../../utils/db";
 import {assertPlanFeature} from "../../utils/plan";
 
 const schema = z.object({
-    provider: z.enum(["openai", "groq"]),
-    model: z.string().trim().min(2).max(100),
+    provider: z.literal("groq"),
+    model: z.enum(["openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound-mini"]),
     apiKey: z.string().trim().optional(),
     systemPrompt: z.string().trim().min(10).max(8000),
     temperature: z.number().min(0).max(2),
@@ -14,6 +14,8 @@ const schema = z.object({
     autoReply: z.boolean(),
     delaySeconds: z.number().int().min(0).max(300),
     fallbackMessage: z.string().max(1000).nullable(),
+    voiceReplyEnabled: z.boolean(),
+    voiceModel: z.enum(["edge-tts/fa-IR-DilaraNeural", "edge-tts/fa-IR-FaridNeural"]),
     isEnabled: z.boolean()
 });
 export default defineEventHandler(async (event) => {

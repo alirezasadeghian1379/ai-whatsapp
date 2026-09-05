@@ -20,7 +20,9 @@ async function submit() {
       {{ tr('لینک امن تغییر رمز برای ایمیل شما ارسال می‌شود.', 'A secure reset link will be sent to your email.') }}</p>
     <div v-if="error" class="mb-4 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{{ error }}</div>
     <div v-if="sent" class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
-      {{ tr('اگر حسابی با این ایمیل وجود داشته باشد، لینک بازیابی ارسال شد.', 'If an account exists, a reset link has been sent.') }}
+      {{
+        tr('اگر حسابی با این ایمیل وجود داشته باشد، لینک بازیابی ارسال شد.', 'If an account exists, a reset link has been sent.')
+      }}
     </div>
     <template v-else><label class="label">{{ tr('ایمیل حساب', 'Account email') }}</label><input v-model="email"
                                                                                                 class="input" required

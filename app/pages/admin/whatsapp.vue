@@ -30,11 +30,15 @@ const {data, status} = await useFetch<any>("/api/admin/whatsapp");
           <td class="p-4"><b>{{ s.user.name }}</b><small class="block text-slate-400"
                                                          dir="ltr">{{ s.user.email }}</small></td>
           <td class="p-4"><b>{{ s.displayName || '—' }}</b><small class="block font-mono"
-                                                                  dir="ltr">{{ s.phoneNumber ? `+${s.phoneNumber}` : '—' }}</small>
+                                                                  dir="ltr">{{
+              s.phoneNumber ? `+${s.phoneNumber}` : '—'
+            }}</small>
           </td>
           <td class="p-4 uppercase">{{ s.provider }}</td>
           <td class="p-4 text-center"><span class="badge"
-                                            :class="s.status==='CONNECTED'?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'">{{ s.status }}</span>
+                                            :class="s.status==='CONNECTED'?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'">{{
+              s.status
+            }}</span>
           </td>
           <td class="p-4 text-center">
             <MessageCircleMore class="me-1 inline" :size="15"/>

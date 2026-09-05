@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {requireSession} from "../../../utils/auth";
 import {db} from "../../../utils/db";
+import {assertPlanFeature} from "../../../utils/plan";
 
 const schema = z.object({
     isPinned: z.boolean().optional(),
@@ -10,6 +11,7 @@ const schema = z.object({
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), id = getRouterParam(event, "id") || "",
         parsed = schema.safeParse(await readBody(event));
+    await assertPlanFeature(String(auth.sub), "messages");
     if (!parsed.success) throw createError({statusCode: 422});
     const found = await db.conversation.findFirst({where: {id, userId: String(auth.sub)}});
     if (!found) throw createError({statusCode: 404});

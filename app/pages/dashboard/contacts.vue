@@ -1,13 +1,148 @@
 <script setup lang="ts">
-import{AlertCircle,Edit3,LoaderCircle,Plus,Search,Trash2,UserRound}from"lucide-vue-next";
-definePageMeta({layout:"dashboard",middleware:"auth"});
-const{tr,formatDate}=useAppPreferences(),search=ref("");
-const{data,status,refresh}=await useFetch<any>("/api/contacts",{query:computed(()=>({search:search.value}))});
-const contacts=computed(()=>data.value?.contacts||[]),modal=ref(false),busy=ref(false),error=ref(""),editingId=ref<string|null>(null);
-const empty=()=>({name:"",phone:"",tags:"",notes:""});const form=reactive(empty());
-function openCreate(){editingId.value=null;Object.assign(form,empty());error.value="";modal.value=true}
-function openEdit(c:any){editingId.value=c.id;Object.assign(form,{name:c.name||"",phone:c.phone,tags:Array.isArray(c.tags)?c.tags.join(", "):"",notes:c.notes||""});error.value="";modal.value=true}
-async function save(){busy.value=true;error.value="";const body={name:form.name||null,phone:form.phone,tags:form.tags.split(",").map(x=>x.trim()).filter(Boolean),notes:form.notes||null};try{if(editingId.value)await $fetch(`/api/contacts/${editingId.value}`,{method:"PATCH",body});else await $fetch("/api/contacts",{method:"POST",body});modal.value=false;await refresh()}catch(e:any){error.value=e.data?.statusMessage||tr("ذخیره مخاطب ناموفق بود.","Could not save contact.")}finally{busy.value=false}}
-async function remove(c:any){if(!confirm(tr(`مخاطب «${c.name||c.phone}» حذف شود؟`,`Delete ${c.name||c.phone}?`)))return;try{await $fetch(`/api/contacts/${c.id}`,{method:"DELETE"});await refresh()}catch(e:any){error.value=e.data?.statusMessage||tr("حذف مخاطب ناموفق بود.","Could not delete contact.")}}
+import {AlertCircle, Edit3, LoaderCircle, Plus, Search, Trash2, UserRound} from "lucide-vue-next";
+
+definePageMeta({layout: "dashboard", middleware: "auth"});
+const {tr, formatDate} = useAppPreferences(), search = ref("");
+const {data, status, refresh} = await useFetch<any>("/api/contacts", {query: computed(() => ({search: search.value}))});
+const contacts = computed(() => data.value?.contacts || []), modal = ref(false), busy = ref(false), error = ref(""),
+    editingId = ref<string | null>(null);
+const empty = () => ({name: "", phone: "", tags: "", notes: ""});
+const form = reactive(empty());
+
+function openCreate() {
+  editingId.value = null;
+  Object.assign(form, empty());
+  error.value = "";
+  modal.value = true
+}
+
+function openEdit(c: any) {
+  editingId.value = c.id;
+  Object.assign(form, {
+    name: c.name || "",
+    phone: c.phone,
+    tags: Array.isArray(c.tags) ? c.tags.join(", ") : "",
+    notes: c.notes || ""
+  });
+  error.value = "";
+  modal.value = true
+}
+
+async function save() {
+  busy.value = true;
+  error.value = "";
+  const body = {
+    name: form.name || null,
+    phone: form.phone,
+    tags: form.tags.split(",").map(x => x.trim()).filter(Boolean),
+    notes: form.notes || null
+  };
+  try {
+    if (editingId.value) await $fetch(`/api/contacts/${editingId.value}`, {
+      method: "PATCH",
+      body
+    }); else await $fetch("/api/contacts", {method: "POST", body});
+    modal.value = false;
+    await refresh()
+  } catch (e: any) {
+    error.value = e.data?.statusMessage || tr("ذخیره مخاطب ناموفق بود.", "Could not save contact.")
+  } finally {
+    busy.value = false
+  }
+}
+
+async function remove(c: any) {
+  if (!confirm(tr(`مخاطب «${c.name || c.phone}» حذف شود؟`, `Delete ${c.name || c.phone}?`))) return;
+  try {
+    await $fetch(`/api/contacts/${c.id}`, {method: "DELETE"});
+    await refresh()
+  } catch (e: any) {
+    error.value = e.data?.statusMessage || tr("حذف مخاطب ناموفق بود.", "Could not delete contact.")
+  }
+}
 </script>
-<template><div><PageHeader :title="tr('مدیریت مخاطبان','Contacts')" :description="tr('اطلاعات مشتریان، برچسب‌ها و یادداشت‌ها را یک‌جا مدیریت کنید.','Manage customer details, tags and notes in one place.')"><button class="btn btn-primary" @click="openCreate"><Plus :size="17"/>{{tr('مخاطب جدید','New contact')}}</button></PageHeader><div v-if="error&&!modal" class="mb-4 flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><AlertCircle :size="18"/>{{error}}</div><section class="surface overflow-hidden"><div class="border-b p-4"><div class="relative max-w-md"><Search class="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" :size="17"/><input v-model="search" class="input ps-10" :placeholder="tr('جستجو در نام، شماره یا یادداشت...','Search name, phone or notes...')"></div></div><div v-if="status==='pending'" class="grid h-52 place-items-center"><LoaderCircle class="animate-spin"/></div><div v-else-if="!contacts.length" class="grid min-h-64 place-items-center p-8 text-center"><div><UserRound class="mx-auto text-slate-300" :size="50"/><p class="muted mt-4">{{tr('هنوز مخاطبی ثبت نشده است.','No contacts yet.')}}</p><button class="btn btn-primary mt-4" @click="openCreate"><Plus :size="16"/>{{tr('افزودن اولین مخاطب','Add first contact')}}</button></div></div><div v-else class="divide-y"><article v-for="c in contacts" :key="c.id" class="grid gap-3 p-5 md:grid-cols-[1fr_1fr_1.2fr_.6fr_auto] md:items-center"><div class="flex items-center gap-3"><span class="grid size-10 place-items-center rounded-full bg-brand-50 font-black text-brand-700">{{(c.name||c.phone)[0]}}</span><div><b>{{c.name||tr('بدون نام','Unnamed')}}</b><small class="block font-mono text-slate-400" dir="ltr">+{{c.phone}}</small></div></div><div class="flex flex-wrap gap-1"><span v-for="tag in c.tags" :key="tag" class="badge bg-slate-100 text-slate-600">{{tag}}</span><small v-if="!c.tags?.length" class="text-slate-400">—</small></div><p class="truncate text-sm text-slate-500">{{c.notes||'—'}}</p><div class="text-xs text-slate-400"><b class="block text-slate-700 dark:text-slate-200">{{c._count.conversations}} {{tr('گفتگو','chats')}}</b>{{formatDate(c.lastInteractionAt,{dateStyle:'medium'})}}</div><div class="flex gap-1"><button class="icon-btn" :title="tr('ویرایش','Edit')" @click="openEdit(c)"><Edit3 :size="16"/></button><button class="icon-btn hover:text-red-500" :title="tr('حذف','Delete')" @click="remove(c)"><Trash2 :size="16"/></button></div></article></div></section><AppModal :open="modal" :title="editingId?tr('ویرایش مخاطب','Edit contact'):tr('مخاطب جدید','New contact')" @close="modal=false"><form class="space-y-4" @submit.prevent="save"><div v-if="error" class="flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><AlertCircle :size="18"/>{{error}}</div><label class="block"><span class="label">{{tr('نام','Name')}}</span><input v-model="form.name" class="input" maxlength="100"></label><label class="block"><span class="label">{{tr('شماره واتساپ','WhatsApp number')}}</span><input v-model="form.phone" class="input" dir="ltr" placeholder="989121234567" required pattern="\+?[0-9]{7,15}"></label><label class="block"><span class="label">{{tr('برچسب‌ها (با ویرگول جدا کنید)','Tags (comma separated)')}}</span><input v-model="form.tags" class="input" :placeholder="tr('مشتری ویژه، فروش','VIP, Sales')"></label><label class="block"><span class="label">{{tr('یادداشت','Notes')}}</span><textarea v-model="form.notes" class="input min-h-28" maxlength="2000"/></label><button class="btn btn-primary w-full" :disabled="busy"><LoaderCircle v-if="busy" class="animate-spin" :size="17"/>{{tr('ذخیره مخاطب','Save contact')}}</button></form></AppModal></div></template>
+<template>
+  <div>
+    <PageHeader :title="tr('مدیریت مخاطبان','Contacts')"
+                :description="tr('اطلاعات مشتریان، برچسب‌ها و یادداشت‌ها را یک‌جا مدیریت کنید.','Manage customer details, tags and notes in one place.')">
+      <button class="btn btn-primary" @click="openCreate">
+        <Plus :size="17"/>
+        {{ tr('مخاطب جدید', 'New contact') }}
+      </button>
+    </PageHeader>
+    <div v-if="error&&!modal" class="mb-4 flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+      <AlertCircle :size="18"/>
+      {{ error }}
+    </div>
+    <section class="surface overflow-hidden">
+      <div class="border-b p-4">
+        <div class="relative max-w-md">
+          <Search class="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" :size="17"/>
+          <input v-model="search" class="input ps-10"
+                 :placeholder="tr('جستجو در نام، شماره یا یادداشت...','Search name, phone or notes...')"></div>
+      </div>
+      <div v-if="status==='pending'" class="grid h-52 place-items-center">
+        <LoaderCircle class="animate-spin"/>
+      </div>
+      <div v-else-if="!contacts.length" class="grid min-h-64 place-items-center p-8 text-center">
+        <div>
+          <UserRound class="mx-auto text-slate-300" :size="50"/>
+          <p class="muted mt-4">{{ tr('هنوز مخاطبی ثبت نشده است.', 'No contacts yet.') }}</p>
+          <button class="btn btn-primary mt-4" @click="openCreate">
+            <Plus :size="16"/>
+            {{ tr('افزودن اولین مخاطب', 'Add first contact') }}
+          </button>
+        </div>
+      </div>
+      <div v-else class="divide-y">
+        <article v-for="c in contacts" :key="c.id"
+                 class="grid gap-3 p-5 md:grid-cols-[1fr_1fr_1.2fr_.6fr_auto] md:items-center">
+          <div class="flex items-center gap-3"><span
+              class="grid size-10 place-items-center rounded-full bg-brand-50 font-black text-brand-700">{{ (c.name || c.phone)[0] }}</span>
+            <div><b>{{ c.name || tr('بدون نام', 'Unnamed') }}</b><small class="block font-mono text-slate-400"
+                                                                        dir="ltr">+{{ c.phone }}</small></div>
+          </div>
+          <div class="flex flex-wrap gap-1"><span v-for="tag in c.tags" :key="tag"
+                                                  class="badge bg-slate-100 text-slate-600">{{ tag }}</span><small
+              v-if="!c.tags?.length" class="text-slate-400">—</small></div>
+          <p class="truncate text-sm text-slate-500">{{ c.notes || '—' }}</p>
+          <div class="text-xs text-slate-400"><b
+              class="block text-slate-700 dark:text-slate-200">{{ c._count.conversations }}
+            {{ tr('گفتگو', 'chats') }}</b>{{ formatDate(c.lastInteractionAt, {dateStyle: 'medium'}) }}
+          </div>
+          <div class="flex gap-1">
+            <button class="icon-btn" :title="tr('ویرایش','Edit')" @click="openEdit(c)">
+              <Edit3 :size="16"/>
+            </button>
+            <button class="icon-btn hover:text-red-500" :title="tr('حذف','Delete')" @click="remove(c)">
+              <Trash2 :size="16"/>
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+    <AppModal :open="modal" :title="editingId?tr('ویرایش مخاطب','Edit contact'):tr('مخاطب جدید','New contact')"
+              @close="modal=false">
+      <form class="space-y-4" @submit.prevent="save">
+        <div v-if="error" class="flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle :size="18"/>
+          {{ error }}
+        </div>
+        <label class="block"><span class="label">{{ tr('نام', 'Name') }}</span><input v-model="form.name" class="input"
+                                                                                      maxlength="100"></label><label
+          class="block"><span class="label">{{ tr('شماره واتساپ', 'WhatsApp number') }}</span><input
+          v-model="form.phone" class="input" dir="ltr" placeholder="989121234567" required
+          pattern="\+?[0-9]{7,15}"></label><label class="block"><span
+          class="label">{{ tr('برچسب‌ها (با ویرگول جدا کنید)', 'Tags (comma separated)') }}</span><input
+          v-model="form.tags" class="input" :placeholder="tr('مشتری ویژه، فروش','VIP, Sales')"></label><label
+          class="block"><span class="label">{{ tr('یادداشت', 'Notes') }}</span><textarea v-model="form.notes"
+                                                                                         class="input min-h-28"
+                                                                                         maxlength="2000"/></label>
+        <button class="btn btn-primary w-full" :disabled="busy">
+          <LoaderCircle v-if="busy" class="animate-spin" :size="17"/>
+          {{ tr('ذخیره مخاطب', 'Save contact') }}
+        </button>
+      </form>
+    </AppModal>
+  </div>
+</template>

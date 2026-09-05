@@ -36,7 +36,7 @@ async function submit() {
                                                                                               type="email"></div>
     <div class="my-4"><label class="label">{{ tr('رمز عبور', 'Password') }}</label><input v-model="form.password"
                                                                                           class="input" required
-                                                                                          minlength="8" type="password">
+                                                                                          minlength="10" type="password">
     </div>
     <button class="btn btn-primary w-full py-3.5" :disabled="pending">
       {{ pending ? tr('در حال ساخت حساب...', 'Creating account...') : tr('ساخت حساب و شروع', 'Create account') }}

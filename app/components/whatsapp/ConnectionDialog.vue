@@ -1,2 +1,22 @@
-<script setup lang="ts">import{LoaderCircle,Plus}from"lucide-vue-next";const name=defineModel<string>({required:true});defineProps<{open:boolean;busy:boolean}>();defineEmits<{close:[];submit:[]}>();const{tr}=useAppPreferences();</script>
-<template><AppModal :open="open" :title="tr('اتصال شماره جدید','Connect a new number')" @close="$emit('close')"><form class="space-y-4" @submit.prevent="$emit('submit')"><UiFormField :label="tr('نام اتصال','Connection name')" required><input v-model="name" class="input" required minlength="2" maxlength="60"></UiFormField><p class="muted text-sm">{{tr('بعد از ساخت، QR واقعی نمایش داده می‌شود. در واتساپ به دستگاه‌های متصل بروید و آن را اسکن کنید.','A real QR appears after creation. Open Linked Devices in WhatsApp and scan it.')}}</p><button class="btn btn-primary w-full" :disabled="busy"><LoaderCircle v-if="busy" class="animate-spin" :size="17"/><Plus v-else :size="17"/>{{tr('ساخت اتصال و دریافت QR','Create and get QR')}}</button></form></AppModal></template>
+<script setup lang="ts">import {LoaderCircle, Plus} from "lucide-vue-next";
+
+const name = defineModel<string>({required: true});
+defineProps<{ open: boolean; busy: boolean }>();
+defineEmits<{ close: []; submit: [] }>();
+const {tr} = useAppPreferences();</script>
+<template>
+  <AppModal :open="open" :title="tr('اتصال شماره جدید','Connect a new number')" @close="$emit('close')">
+    <form class="space-y-4" @submit.prevent="$emit('submit')">
+      <UiFormField :label="tr('نام اتصال','Connection name')" required><input v-model="name" class="input" required
+                                                                              minlength="2" maxlength="60">
+      </UiFormField>
+      <p class="muted text-sm">
+        {{ tr('بعد از ساخت، QR واقعی نمایش داده می‌شود. در واتساپ به دستگاه‌های متصل بروید و آن را اسکن کنید.', 'A real QR appears after creation. Open Linked Devices in WhatsApp and scan it.') }}</p>
+      <button class="btn btn-primary w-full" :disabled="busy">
+        <LoaderCircle v-if="busy" class="animate-spin" :size="17"/>
+        <Plus v-else :size="17"/>
+        {{ tr('ساخت اتصال و دریافت QR', 'Create and get QR') }}
+      </button>
+    </form>
+  </AppModal>
+</template>

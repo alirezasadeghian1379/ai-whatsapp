@@ -1,2 +1,22 @@
-<script setup lang="ts">import type{ChatContact}from"~/types/chat";defineProps<{contact:ChatContact}>();const{tr}=useAppPreferences();</script>
-<template><aside class="hidden border-s p-5 lg:block"><h3 class="font-black">{{tr('اطلاعات مخاطب','Contact details')}}</h3><dl class="mt-6 space-y-5 text-sm"><div><dt class="text-slate-400">{{tr('نام','Name')}}</dt><dd class="mt-1 font-bold">{{contact.name||'—'}}</dd></div><div><dt class="text-slate-400">{{tr('شماره','Phone')}}</dt><dd class="mt-1 font-mono" dir="ltr">+{{contact.phone}}</dd></div><div><dt class="text-slate-400">{{tr('یادداشت','Notes')}}</dt><dd class="mt-1">{{contact.notes||'—'}}</dd></div></dl></aside></template>
+<script setup lang="ts">import type {ChatContact} from "~/types/chat";
+
+defineProps<{ contact: ChatContact }>();
+const {tr} = useAppPreferences();</script>
+<template>
+  <aside class="hidden border-s p-5 lg:block"><h3 class="font-black">{{ tr('اطلاعات مخاطب', 'Contact details') }}</h3>
+    <dl class="mt-6 space-y-5 text-sm">
+      <div>
+        <dt class="text-slate-400">{{ tr('نام', 'Name') }}</dt>
+        <dd class="mt-1 font-bold">{{ contact.name || '—' }}</dd>
+      </div>
+      <div>
+        <dt class="text-slate-400">{{ tr('شماره', 'Phone') }}</dt>
+        <dd class="mt-1 font-mono" dir="ltr">+{{ contact.phone }}</dd>
+      </div>
+      <div>
+        <dt class="text-slate-400">{{ tr('یادداشت', 'Notes') }}</dt>
+        <dd class="mt-1">{{ contact.notes || '—' }}</dd>
+      </div>
+    </dl>
+  </aside>
+</template>

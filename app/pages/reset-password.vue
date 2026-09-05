@@ -24,10 +24,10 @@ async function submit() {
       {{ tr('رمز عبور تغییر کرد. اکنون وارد حساب شوید.', 'Password changed. You can now sign in.') }}
       <NuxtLink to="/login" class="btn btn-primary mt-4 w-full">{{ tr('ورود', 'Sign in') }}</NuxtLink>
     </div>
-    <template v-else><input v-model="form.password" class="input mb-4" type="password" required minlength="8"
+    <template v-else><input v-model="form.password" class="input mb-4" type="password" required minlength="10"
                             :placeholder="tr('رمز جدید','New password')"><input v-model="form.confirmPassword"
                                                                                 class="input" type="password" required
-                                                                                minlength="8"
+                                                                                minlength="10"
                                                                                 :placeholder="tr('تکرار رمز جدید','Confirm password')">
       <button class="btn btn-primary mt-4 w-full" :disabled="busy||!route.query.token">
         {{ busy ? tr('در حال ذخیره...', 'Saving...') : tr('تغییر رمز عبور', 'Change password') }}

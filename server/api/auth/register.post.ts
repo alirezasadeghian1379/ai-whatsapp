@@ -6,14 +6,14 @@ import {databaseAction} from "../../utils/errors";
 import {assertRateLimit} from "../../utils/rate-limit";
 
 const schema = z.object({
-    name: z.string().trim().min(2),
-    email: z.email().toLowerCase(),
-    phone: z.string().trim().optional(),
-    password: z.string().min(8).max(72)
+    name: z.string().trim().min(2).max(80),
+    email: z.email().max(254).toLowerCase(),
+    phone: z.string().trim().regex(/^\+?\d{7,15}$/).optional(),
+    password: z.string().min(10).max(72)
 });
 
 export default defineEventHandler(async event => {
-    assertRateLimit(event,"register",{limit:5,windowMs:60*60*1000});
+    assertRateLimit(event, "register", {limit: 5, windowMs: 60 * 60 * 1000});
     const parsed = schema.safeParse(await readBody(event));
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "اطلاعات واردشده معتبر نیست."});
     const {name, email, phone, password} = parsed.data;

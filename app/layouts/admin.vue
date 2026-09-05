@@ -36,7 +36,6 @@ async function logout() {
 
 items.splice(5, 0,
     {to: "/admin/whatsapp", label: "مدیریت واتساپ", icon: MessageSquareText},
-    {to: "/admin/webhooks", label: "مدیریت وب‌هوک‌ها", icon: ClipboardList},
     {to: "/admin/ai", label: "مدیریت هوش مصنوعی", icon: Settings},
     {to: "/admin/settings", label: "تنظیمات سامانه", icon: Settings},
 );

@@ -10,7 +10,8 @@ const profile = reactive({
   email: "",
   phone: "",
   company: "",
-  notifications: {message: true, disconnect: true, webhook: true, subscription: true}
+  currentPassword: "",
+  notifications: {message: true, disconnect: true, subscription: true}
 });
 const password = reactive({currentPassword: "", newPassword: "", confirmPassword: ""});
 const tabs = computed(() => [{id: "profile", label: tr("پروفایل", "Profile"), icon: User}, {
@@ -83,7 +84,9 @@ async function save() {
               class="label">{{ tr('ایمیل', 'Email') }}</span><input v-model="profile.email" class="input" dir="ltr"
                                                                     type="email" required></label><label><span
               class="label">{{ tr('موبایل', 'Phone') }}</span><input v-model="profile.phone" class="input"
-                                                                     dir="ltr"></label></div>
+                                                                     dir="ltr"></label><label class="sm:col-span-2"><span
+              class="label">{{ tr('رمز فعلی (فقط برای تغییر ایمیل)', 'Current password (only to change email)') }}</span><input
+              v-model="profile.currentPassword" class="input" type="password" autocomplete="current-password"></label></div>
         </template>
         <template v-else-if="tab==='security'"><h2 class="font-black">{{ tr('تغییر رمز عبور', 'Change password') }}</h2>
           <div class="mt-6 max-w-lg space-y-4"><input v-model="password.currentPassword" class="input" type="password"
@@ -91,21 +94,25 @@ async function save() {
                                                       minlength="8"><input v-model="password.newPassword" class="input"
                                                                            type="password"
                                                                            :placeholder="tr('رمز جدید','New password')"
-                                                                           required minlength="8"><input
+                                                                           required minlength="10"><input
               v-model="password.confirmPassword" class="input" type="password"
-              :placeholder="tr('تکرار رمز جدید','Confirm new password')" required minlength="8"></div>
+              :placeholder="tr('تکرار رمز جدید','Confirm new password')" required minlength="10"></div>
         </template>
         <template v-else-if="tab==='appearance'"><h2 class="font-black">
           {{ tr('ظاهر و زبان', 'Appearance & language') }}</h2>
           <p class="muted my-4">
-            {{ tr('تم و زبان انتخاب‌شده در مرورگر شما ذخیره می‌شود.', 'Your theme and language are saved in the browser.') }}</p>
+            {{
+              tr('تم و زبان انتخاب‌شده در مرورگر شما ذخیره می‌شود.', 'Your theme and language are saved in the browser.')
+            }}</p>
           <ThemeLanguageControls/>
         </template>
         <template v-else><h2 class="font-black">{{ tr('تنظیمات اعلان', 'Notification settings') }}</h2>
           <div class="mt-6 space-y-4"><label
-              v-for="item in [{k:'message',fa:'پیام جدید',en:'New message'},{k:'disconnect',fa:'قطع اتصال واتساپ',en:'WhatsApp disconnected'},{k:'webhook',fa:'خطای وب‌هوک',en:'Webhook error'},{k:'subscription',fa:'نزدیک شدن پایان اشتراک',en:'Subscription expiry'}]"
+              v-for="item in [{k:'message',fa:'پیام جدید',en:'New message'},{k:'disconnect',fa:'قطع اتصال واتساپ',en:'WhatsApp disconnected'},{k:'subscription',fa:'نزدیک شدن پایان اشتراک',en:'Subscription expiry'}]"
               :key="item.k"
-              class="flex items-center justify-between rounded-xl border p-4 text-sm"><span>{{ tr(item.fa, item.en) }}</span><input
+              class="flex items-center justify-between rounded-xl border p-4 text-sm"><span>{{
+              tr(item.fa, item.en)
+            }}</span><input
               v-model="profile.notifications[item.k as keyof typeof profile.notifications]" type="checkbox"
               class="size-4 accent-brand-600"></label></div>
         </template>

@@ -11,7 +11,9 @@
         <h2 class="text-4xl font-black leading-[1.6]">{{ tr('ارتباطی سریع‌تر،', 'Faster conversations,') }}<br><span
             class="text-brand-300">{{ tr('تجربه‌ای ماندگارتر', 'lasting experiences') }}</span></h2>
         <p class="mt-5 leading-8 text-slate-300">
-          {{ tr('تمام گفتگوهای واتساپ و پاسخ‌های هوشمند تیم شما، در یک فضای امن و یکپارچه.', 'All your WhatsApp conversations and AI replies in one secure workspace.') }}</p>
+          {{
+            tr('تمام گفتگوهای واتساپ و پاسخ‌های هوشمند تیم شما، در یک فضای امن و یکپارچه.', 'All your WhatsApp conversations and AI replies in one secure workspace.')
+          }}</p>
       </div>
       <p class="relative z-10 text-xs text-slate-500">
         {{ tr('ساخته‌شده برای تیم‌های رو به رشد', 'Built for growing teams') }}</p></section>

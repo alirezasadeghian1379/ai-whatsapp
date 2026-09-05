@@ -7,13 +7,10 @@ import {
   LogOut,
   Menu,
   MessageCircleMore,
-  MessageSquareText,
   Settings,
   ShieldCheck,
   Smartphone,
   UserRound,
-  WalletCards,
-  Webhook,
   X
 } from "lucide-vue-next";
 
@@ -26,23 +23,19 @@ const items = computed(() => [{icon: LayoutDashboard, label: t("overview"), to: 
   icon: Smartphone,
   label: t("whatsapp"),
   to: "/dashboard/whatsapp", feature: "whatsapp"
-}, {icon: MessageCircleMore, label: t("chats"), to: "/dashboard/chats"}, {
+}, {icon: MessageCircleMore, label: t("chats"), to: "/dashboard/chats", feature: "messages"}, {
   icon: UserRound,
   label: tr("مخاطبان", "Contacts"),
   to: "/dashboard/contacts", feature: "contacts"
-}, {
-  icon: Webhook,
-  label: t("webhooks"),
-  to: "/dashboard/webhooks", feature: "webhooks"
 }, {icon: Bot, label: t("ai"), to: "/dashboard/ai", feature: "ai"}, {
   icon: CreditCard,
   label: t("subscription"),
   to: "/dashboard/subscription"
-}, {icon: WalletCards, label: tr("کیف پول", "Wallet"), to: "/dashboard/wallet"}, {
-  icon: MessageSquareText,
-  label: tr("پنل پیامکی", "SMS providers"),
-  to: "/dashboard/sms", feature: "sms"
-}, {icon: Settings, label: t("settings"), to: "/dashboard/settings"}].filter(item=>!item.feature||accessData.value?.features?.[item.feature]));
+}, {
+  icon: Settings,
+  label: t("settings"),
+  to: "/dashboard/settings"
+}].filter(item => !item.feature || accessData.value?.features?.[item.feature]));
 watch(() => route.path, () => mobileOpen.value = false);
 
 async function logout() {
@@ -85,7 +78,9 @@ async function logout() {
           {{ t('help') }}
         </NuxtLink>
         <div class="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-800"><span
-            class="grid size-10 place-items-center rounded-xl bg-brand-100 font-black text-brand-700">{{ user?.name?.slice(0, 2) || '—' }}</span>
+            class="grid size-10 place-items-center rounded-xl bg-brand-100 font-black text-brand-700">{{
+            user?.name?.slice(0, 2) || '—'
+          }}</span>
           <div class="min-w-0 flex-1"><b class="block truncate text-xs">{{ user?.name }}</b><small
               class="text-[10px] text-slate-400">{{ user?.role }}</small></div>
           <button class="text-slate-400 hover:text-red-500" :title="t('logout')" @click="logout">
@@ -100,7 +95,9 @@ async function logout() {
         <button class="icon-btn lg:hidden" @click="mobileOpen=true">
           <Menu :size="19"/>
         </button>
-        <div class="hidden max-w-md flex-1 md:block"><GlobalSearch/></div>
+        <div class="hidden max-w-md flex-1 md:block">
+          <GlobalSearch/>
+        </div>
         <div class="ms-auto flex items-center gap-1">
           <ThemeLanguageControls/>
           <NotificationMenu/>

@@ -3,9 +3,11 @@ import {requireSession} from "../../../utils/auth";
 import {db} from "../../../utils/db";
 import {databaseAction} from "../../../utils/errors";
 import {publicWhatsAppSession, whatsappStatus} from "../../../utils/whatsapp";
+import {assertPlanFeature} from "../../../utils/plan";
 
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event);
+    await assertPlanFeature(String(auth.sub), "whatsapp");
     const provider = getWhatsAppProvider();
     const sessions = await databaseAction(() => db.whatsAppSession.findMany({
         where: {userId: String(auth.sub)},

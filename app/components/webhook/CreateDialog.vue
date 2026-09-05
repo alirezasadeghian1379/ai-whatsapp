@@ -1,2 +1,28 @@
-<script setup lang="ts">import{LoaderCircle}from"lucide-vue-next";import type{WebhookForm}from"~/types/webhook";const form=defineModel<WebhookForm>({required:true});defineProps<{open:boolean;busy:boolean;eventOptions:string[]}>();defineEmits<{close:[];submit:[]}>();const{tr}=useAppPreferences();</script>
-<template><AppModal :open="open" :title="tr('ایجاد وب‌هوک','Create webhook')" @close="$emit('close')"><form class="space-y-4" @submit.prevent="$emit('submit')"><UiFormField :label="tr('نام','Name')" required><input v-model="form.name" class="input" required minlength="2"></UiFormField><UiFormField label="Endpoint URL" required><input v-model="form.url" class="input" type="url" required dir="ltr"></UiFormField><fieldset><legend class="label">{{tr('رویدادها','Events')}}</legend><label v-for="event in eventOptions" :key="event" class="mb-2 flex gap-2 text-sm"><input v-model="form.events" type="checkbox" :value="event" class="accent-brand-600">{{event}}</label></fieldset><button class="btn btn-primary w-full" :disabled="busy||!form.events.length"><LoaderCircle v-if="busy" class="animate-spin" :size="17"/>{{tr('ایجاد وب‌هوک','Create webhook')}}</button></form></AppModal></template>
+<script setup lang="ts">import {LoaderCircle} from "lucide-vue-next";
+import type {WebhookForm} from "~/types/webhook";
+
+const form = defineModel<WebhookForm>({required: true});
+defineProps<{ open: boolean; busy: boolean; eventOptions: string[] }>();
+defineEmits<{ close: []; submit: [] }>();
+const {tr} = useAppPreferences();</script>
+<template>
+  <AppModal :open="open" :title="tr('ایجاد وب‌هوک','Create webhook')" @close="$emit('close')">
+    <form class="space-y-4" @submit.prevent="$emit('submit')">
+      <UiFormField :label="tr('نام','Name')" required><input v-model="form.name" class="input" required minlength="2">
+      </UiFormField>
+      <UiFormField label="Endpoint URL" required><input v-model="form.url" class="input" type="url" required dir="ltr">
+      </UiFormField>
+      <fieldset>
+        <legend class="label">{{ tr('رویدادها', 'Events') }}</legend>
+        <label v-for="event in eventOptions" :key="event" class="mb-2 flex gap-2 text-sm"><input v-model="form.events"
+                                                                                                 type="checkbox"
+                                                                                                 :value="event"
+                                                                                                 class="accent-brand-600">{{ event }}</label>
+      </fieldset>
+      <button class="btn btn-primary w-full" :disabled="busy||!form.events.length">
+        <LoaderCircle v-if="busy" class="animate-spin" :size="17"/>
+        {{ tr('ایجاد وب‌هوک', 'Create webhook') }}
+      </button>
+    </form>
+  </AppModal>
+</template>

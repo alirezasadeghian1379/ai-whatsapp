@@ -15,6 +15,7 @@ model User {
   passwordHash String
   role String @default("USER")
   status String @default("ACTIVE")
+  sessionVersion Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   subscriptions Subscription[]
@@ -305,6 +306,8 @@ model AIConfiguration {
   autoReply Boolean @default(false)
   delaySeconds Int @default(0)
   fallbackMessage String?
+  voiceReplyEnabled Boolean @default(false)
+  voiceModel String @default("edge-tts/fa-IR-DilaraNeural")
   isEnabled Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

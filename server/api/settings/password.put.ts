@@ -1,11 +1,11 @@
 import {compare, hash} from "bcryptjs";
 import {z} from "zod";
-import {requireSession} from "../../utils/auth";
+import {issueSession, requireSession} from "../../utils/auth";
 import {db} from "../../utils/db";
 
 const schema = z.object({
     currentPassword: z.string().min(8),
-    newPassword: z.string().min(8).max(100),
+    newPassword: z.string().min(10).max(72),
     confirmPassword: z.string()
 }).refine(x => x.newPassword === x.confirmPassword, {message: "تکرار رمز مطابقت ندارد."});
 export default defineEventHandler(async (event) => {
@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: "رمز فعلی نادرست است."
     });
-    await db.user.update({where: {id: user.id}, data: {passwordHash: await hash(parsed.data.newPassword, 12)}});
+    await db.user.update({where: {id: user.id}, data: {passwordHash: await hash(parsed.data.newPassword, 12), sessionVersion: {increment: 1}}});
+    await issueSession(event, {id: user.id, role: user.role});
     return {success: true};
 });

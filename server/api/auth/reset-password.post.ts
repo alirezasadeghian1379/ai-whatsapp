@@ -2,13 +2,15 @@ import {createHash} from "node:crypto";
 import {hash} from "bcryptjs";
 import {z} from "zod";
 import {db} from "../../utils/db";
+import {assertRateLimit} from "../../utils/rate-limit";
 
 const schema = z.object({
     token: z.string().min(20),
-    password: z.string().min(8).max(72),
+    password: z.string().min(10).max(72),
     confirmPassword: z.string()
 }).refine(x => x.password === x.confirmPassword, {message: "تکرار رمز عبور مطابقت ندارد."});
 export default defineEventHandler(async event => {
+    assertRateLimit(event, "reset-password", {limit: 10, windowMs: 15 * 60_000});
     const p = schema.safeParse(await readBody(event));
     if (!p.success) throw createError({
         statusCode: 422,
@@ -19,7 +21,7 @@ export default defineEventHandler(async event => {
     if (!record) throw createError({statusCode: 400, statusMessage: "لینک بازیابی نامعتبر یا منقضی شده است."});
     await db.$transaction([db.user.update({
         where: {id: record.userId},
-        data: {passwordHash: await hash(p.data.password, 12)}
+        data: {passwordHash: await hash(p.data.password, 12), sessionVersion: {increment: 1}}
     }), db.passwordResetToken.update({
         where: {id: record.id},
         data: {usedAt: new Date()}

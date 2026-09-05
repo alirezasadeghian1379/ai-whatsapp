@@ -1,13 +1,104 @@
 <script setup lang="ts">
-import{Plus}from"lucide-vue-next";import type{WebhookDelivery,WebhookForm,WebhookItem}from"~/types/webhook";
-definePageMeta({layout:"dashboard",middleware:"auth"});const{tr}=useAppPreferences();const{data,status,refresh}=await useFetch<{webhooks:WebhookItem[]}>("/api/webhooks");const hooks=computed(()=>data.value?.webhooks||[]);
-const modal=ref(false),detail=ref(false),busy=ref(false),notice=ref(""),error=ref(""),newSecret=ref(""),deliveries=ref<WebhookDelivery[]>([]);const form=ref<WebhookForm>({name:"",url:"",events:["message.received"]});const eventOptions=["message.received","message.sent","message.failed","whatsapp.connected","whatsapp.disconnected","contact.created","contact.updated"];
-function fail(e:any){error.value=e.data?.statusMessage||tr("عملیات ناموفق بود.","Operation failed.");notice.value=""}
-async function create(){busy.value=true;error.value="";try{const result=await $fetch<{secret:string}>("/api/webhooks",{method:"POST",body:form.value});newSecret.value=result.secret;form.value={name:"",url:"",events:["message.received"]};modal.value=false;notice.value=tr("وب‌هوک ساخته شد؛ Secret را همین حالا کپی کنید.","Webhook created. Copy the secret now.");await refresh()}catch(e){fail(e)}finally{busy.value=false}}
-async function remove(id:string){if(!confirm(tr("این وب‌هوک حذف شود؟","Delete this webhook?")))return;try{await $fetch(`/api/webhooks/${id}`,{method:"DELETE"});notice.value=tr("وب‌هوک حذف شد.","Webhook deleted.");await refresh()}catch(e){fail(e)}}
-async function test(id:string){busy.value=true;try{await $fetch(`/api/webhooks/${id}/test`,{method:"POST"});notice.value=tr("تست با پاسخ موفق تحویل شد.","Test delivered successfully.");await refresh()}catch(e){fail(e)}finally{busy.value=false}}
-async function toggle(item:WebhookItem){try{await $fetch(`/api/webhooks/${item.id}`,{method:"PATCH",body:{status:item.status==="ACTIVE"?"DISABLED":"ACTIVE"}});await refresh()}catch(e){fail(e)}}
-async function showDeliveries(id:string){try{deliveries.value=(await $fetch<{deliveries:WebhookDelivery[]}>(`/api/webhooks/${id}/deliveries`)).deliveries;detail.value=true}catch(e){fail(e)}}
-async function copy(){await navigator.clipboard.writeText(newSecret.value);notice.value=tr("کپی شد.","Copied.")}
+import {Plus} from "lucide-vue-next";
+import type {WebhookDelivery, WebhookForm, WebhookItem} from "~/types/webhook";
+
+definePageMeta({layout: "dashboard", middleware: "auth"});
+const {tr} = useAppPreferences();
+const {data, status, refresh} = await useFetch<{ webhooks: WebhookItem[] }>("/api/webhooks");
+const hooks = computed(() => data.value?.webhooks || []);
+const modal = ref(false), detail = ref(false), busy = ref(false), notice = ref(""), error = ref(""),
+    newSecret = ref(""), deliveries = ref<WebhookDelivery[]>([]);
+const form = ref<WebhookForm>({name: "", url: "", events: ["message.received"]});
+const eventOptions = ["message.received", "message.sent", "message.failed", "whatsapp.connected", "whatsapp.disconnected", "contact.created", "contact.updated"];
+
+function fail(e: any) {
+  error.value = e.data?.statusMessage || tr("عملیات ناموفق بود.", "Operation failed.");
+  notice.value = ""
+}
+
+async function create() {
+  busy.value = true;
+  error.value = "";
+  try {
+    const result = await $fetch<{ secret: string }>("/api/webhooks", {method: "POST", body: form.value});
+    newSecret.value = result.secret;
+    form.value = {name: "", url: "", events: ["message.received"]};
+    modal.value = false;
+    notice.value = tr("وب‌هوک ساخته شد؛ Secret را همین حالا کپی کنید.", "Webhook created. Copy the secret now.");
+    await refresh()
+  } catch (e) {
+    fail(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function remove(id: string) {
+  if (!confirm(tr("این وب‌هوک حذف شود؟", "Delete this webhook?"))) return;
+  try {
+    await $fetch(`/api/webhooks/${id}`, {method: "DELETE"});
+    notice.value = tr("وب‌هوک حذف شد.", "Webhook deleted.");
+    await refresh()
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function test(id: string) {
+  busy.value = true;
+  try {
+    await $fetch(`/api/webhooks/${id}/test`, {method: "POST"});
+    notice.value = tr("تست با پاسخ موفق تحویل شد.", "Test delivered successfully.");
+    await refresh()
+  } catch (e) {
+    fail(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function toggle(item: WebhookItem) {
+  try {
+    await $fetch(`/api/webhooks/${item.id}`, {
+      method: "PATCH",
+      body: {status: item.status === "ACTIVE" ? "DISABLED" : "ACTIVE"}
+    });
+    await refresh()
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function showDeliveries(id: string) {
+  try {
+    deliveries.value = (await $fetch<{ deliveries: WebhookDelivery[] }>(`/api/webhooks/${id}/deliveries`)).deliveries;
+    detail.value = true
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function copy() {
+  await navigator.clipboard.writeText(newSecret.value);
+  notice.value = tr("کپی شد.", "Copied.")
+}
 </script>
-<template><div><PageHeader :title="tr('وب‌هوک‌ها','Webhooks')" :description="tr('رویدادها را با امضای HMAC و لاگ کامل به سرویس‌های دیگر بفرستید.','Send events with HMAC signatures and delivery logs.')"><button class="btn btn-primary" @click="modal=true"><Plus :size="17"/>{{tr('وب‌هوک جدید','New webhook')}}</button></PageHeader><UiFeedback v-if="notice" class="mb-4" type="success" :message="notice"/><UiFeedback v-if="error" class="mb-4" type="error" :message="error"/><WebhookSecretBanner v-if="newSecret" :secret="newSecret" @copy="copy" @dismiss="newSecret=''"/><WebhookList :items="hooks" :pending="status==='pending'" :busy="busy" @toggle="toggle" @history="showDeliveries" @test="test" @remove="remove"/><WebhookCreateDialog v-model="form" :open="modal" :busy="busy" :event-options="eventOptions" @close="modal=false" @submit="create"/><WebhookDeliveryDialog :open="detail" :deliveries="deliveries" @close="detail=false"/></div></template>
+<template>
+  <div>
+    <PageHeader :title="tr('وب‌هوک‌ها','Webhooks')"
+                :description="tr('رویدادها را با امضای HMAC و لاگ کامل به سرویس‌های دیگر بفرستید.','Send events with HMAC signatures and delivery logs.')">
+      <button class="btn btn-primary" @click="modal=true">
+        <Plus :size="17"/>
+        {{ tr('وب‌هوک جدید', 'New webhook') }}
+      </button>
+    </PageHeader>
+    <UiFeedback v-if="notice" class="mb-4" type="success" :message="notice"/>
+    <UiFeedback v-if="error" class="mb-4" type="error" :message="error"/>
+    <WebhookSecretBanner v-if="newSecret" :secret="newSecret" @copy="copy" @dismiss="newSecret=''"/>
+    <WebhookList :items="hooks" :pending="status==='pending'" :busy="busy" @toggle="toggle" @history="showDeliveries"
+                 @test="test" @remove="remove"/>
+    <WebhookCreateDialog v-model="form" :open="modal" :busy="busy" :event-options="eventOptions" @close="modal=false"
+                         @submit="create"/>
+    <WebhookDeliveryDialog :open="detail" :deliveries="deliveries" @close="detail=false"/>
+  </div>
+</template>

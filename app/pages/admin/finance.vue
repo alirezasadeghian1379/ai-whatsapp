@@ -11,7 +11,11 @@ const {data} = await useFetch<any>('/api/admin/finance');</script>
     </section>
     <section class="surface mt-5 overflow-hidden"><h2 class="border-b p-5 font-black">آخرین پرداخت‌ها</h2>
       <div v-for="p in data?.payments" :key="p.id" class="grid gap-2 border-b p-5 md:grid-cols-5">
-        <span>{{ p.order?.user?.name || p.walletDeposit?.user?.name }}</span><span>{{ p.walletDeposit ? 'شارژ کیف پول' : p.order?.plan?.name }}</span><b>{{ formatNumber(p.amount) }}
+        <span>{{
+            p.order?.user?.name || p.walletDeposit?.user?.name
+          }}</span><span>{{ p.walletDeposit ? 'شارژ کیف پول' : p.order?.plan?.name }}</span><b>{{
+          formatNumber(p.amount)
+        }}
         تومان</b><span class="badge w-fit">{{ p.provider }}</span><span>{{ p.status }}</span></div>
     </section>
   </div>

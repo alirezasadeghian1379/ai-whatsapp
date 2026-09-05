@@ -15,7 +15,7 @@ export default defineNuxtConfig({
     },
     nitro: {
         preset: "node-server",
-        routeRules: {"/api/**": {headers: {"x-content-type-options": "nosniff", "x-frame-options": "DENY"}}}
+        routeRules: {"/**": {headers: {"x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "strict-origin-when-cross-origin"}}}
     },
     runtimeConfig: {
         authSecret: process.env.AUTH_SECRET,
@@ -31,7 +31,9 @@ export default defineNuxtConfig({
         encryptionSecret: process.env.ENCRYPTION_SECRET || process.env.AUTH_SECRET || "",
         appUrl: process.env.APP_URL || "http://localhost:3000",
         aiProvider: process.env.AI_PROVIDER || "mock",
-        paymentProvider: process.env.PAYMENT_PROVIDER || "mock",
+        ttsApiUrl: process.env.TTS_API_URL || "http://tokaido.proxy.rlwy.net:15389/v1/audio/speech",
+        ttsApiKey: process.env.TTS_API_KEY || "",
+        paymentProvider: process.env.PAYMENT_PROVIDER || "zarinpal",
         paymentCallbackUrl: process.env.PAYMENT_CALLBACK_URL || "http://localhost:3000/api/payments/callback",
         smtpHost: process.env.SMTP_HOST || "",
         smtpPort: process.env.SMTP_PORT || "587",
