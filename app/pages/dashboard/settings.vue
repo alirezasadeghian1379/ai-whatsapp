@@ -3,6 +3,7 @@ import {AlertCircle, Bell, LoaderCircle, Palette, Save, Shield, User} from "luci
 
 definePageMeta({layout: "dashboard", middleware: "auth"});
 const {tr} = useAppPreferences();
+const {success: showSuccess, error: showError} = useAppAlert();
 const {data, status, refresh} = await useFetch<any>("/api/settings/profile");
 const tab = ref("profile"), busy = ref(false), notice = ref(""), error = ref("");
 const profile = reactive({
@@ -34,6 +35,7 @@ watchEffect(() => {
 function fail(e: any) {
   error.value = e.data?.statusMessage || tr("ذخیره تغییرات ناموفق بود.", "Could not save changes.");
   notice.value = ""
+  showError(error.value)
 }
 
 async function save() {
@@ -48,6 +50,7 @@ async function save() {
       body: {...profile, phone: profile.phone || null, company: profile.company || null}
     });
     notice.value = tr("تغییرات ذخیره شد.", "Changes saved.");
+    showSuccess(notice.value)
     await refresh()
   } catch (e) {
     fail(e)
@@ -60,8 +63,6 @@ async function save() {
   <div>
     <PageHeader :title="tr('تنظیمات','Settings')"
                 :description="tr('حساب کاربری و ترجیحات فضای کاری خود را مدیریت کنید.','Manage your account and workspace preferences.')"/>
-    <UiFeedback v-if="notice" class="mb-4" type="success" :message="notice"/>
-    <UiFeedback v-if="error" class="mb-4" type="error" :message="error"/>
     <UiLoadingState v-if="status==='pending'" class="surface" height="h-60"/>
     <div v-else class="grid gap-5 lg:grid-cols-[240px_1fr]">
       <nav class="surface h-fit p-2">

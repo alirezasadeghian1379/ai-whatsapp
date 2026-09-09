@@ -8,10 +8,16 @@ export default defineEventHandler(async event => {
     await assertPlanFeature(String(auth.sub), "messages")
     const conversation = await db.conversation.findFirst({
         where: {id, userId: String(auth.sub)},
-        include: {contact: true, session: true, messages: {orderBy: {createdAt: "asc"}, take: 200}}
+        include: {
+            contact: true,
+            session: {select: {id: true, externalId: true, phoneNumber: true, displayName: true, status: true, connectedAt: true, lastSeenAt: true}},
+            messages: {orderBy: {createdAt: "asc"}, take: 200}
+        }
     })
     if (!conversation) throw createError({statusCode: 404, statusMessage: "گفتگو پیدا نشد."})
-    if (!conversation.unreadCount) return {conversation}
+    const {externalId: _externalId, ...publicSession} = conversation.session
+    const publicConversation = {...conversation, session: publicSession}
+    if (!conversation.unreadCount) return {conversation: publicConversation}
 
     const unread = conversation.messages.filter(message => message.direction === "INBOUND" && message.status === "RECEIVED")
     const messageIds = unread.flatMap(message => message.externalId ? [message.externalId] : [])
@@ -26,7 +32,7 @@ export default defineEventHandler(async event => {
     ])
     return {
         conversation: {
-            ...conversation,
+            ...publicConversation,
             unreadCount: 0,
             messages: conversation.messages.map(message => unread.some(item => item.id === message.id) ? {
                 ...message,

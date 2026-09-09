@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
         }, include: {plan: true}, orderBy: {createdAt: "desc"}
     }), db.order.findMany({
         where: {userId},
-        include: {plan: true, payments: true},
+        include: {plan: true},
         orderBy: {createdAt: "desc"},
         take: 20
     }), db.usage.findFirst({

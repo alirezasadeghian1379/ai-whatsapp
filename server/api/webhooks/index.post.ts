@@ -2,7 +2,7 @@ import {z} from "zod";
 import {requireSession} from "../../utils/auth";
 import {encryptSecret} from "../../utils/crypto";
 import {db} from "../../utils/db";
-import {assertPlanLimit} from "../../utils/plan";
+import {assertPlanFeature, assertPlanLimit} from "../../utils/plan";
 
 const events = ["message.received", "message.sent", "message.failed", "whatsapp.connected", "whatsapp.disconnected", "contact.created", "contact.updated"] as const;
 const schema = z.object({
@@ -12,6 +12,7 @@ const schema = z.object({
 });
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), parsed = schema.safeParse(await readBody(event));
+    await assertPlanFeature(String(auth.sub), "webhooks");
     await assertPlanLimit(String(auth.sub), "webhooks");
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "اطلاعات وب‌هوک معتبر نیست."});
     const secret = `whsec_${crypto.randomUUID().replace(/-/g, "")}`;

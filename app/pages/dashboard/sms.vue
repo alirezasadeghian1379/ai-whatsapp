@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {MessageSquareText, Plus, Power, Send, Star, Trash2} from "lucide-vue-next";
 
-definePageMeta({layout: "dashboard", middleware: "auth"});
+definePageMeta({layout: "dashboard", middleware: ["auth", "dashboard-disabled"]});
 const {tr} = useAppPreferences();
 const {data, refresh} = await useFetch<any>("/api/sms/configurations");
 const show = ref(false), sendOpen = ref(false), error = ref(""), notice = ref("");

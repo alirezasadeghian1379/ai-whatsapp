@@ -16,7 +16,7 @@ const {tr} = useAppPreferences()
         <div>
           <h2 class="font-black">{{ session.displayName || tr('واتساپ کسب‌وکار', 'Business WhatsApp') }}</h2>
           <p class="mt-1 font-mono text-sm text-slate-400" dir="ltr">
-            {{ session.phoneNumber ? `+${session.phoneNumber}` : session.externalId }}</p>
+            {{ session.phoneNumber ? `+${session.phoneNumber}` : '—' }}</p>
         </div>
       </div>
       <WhatsAppStatusBadge :status="session.status"/>

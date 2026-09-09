@@ -19,7 +19,6 @@ export async function ownedWhatsAppSession(event: H3Event, id: string) {
 
 export function publicWhatsAppSession(record: {
     id: string;
-    externalId: string;
     phoneNumber: string | null;
     displayName: string | null;
     status: string;
@@ -31,7 +30,6 @@ export function publicWhatsAppSession(record: {
 }) {
     return {
         id: record.id,
-        externalId: record.externalId,
         phoneNumber: record.phoneNumber,
         displayName: record.displayName,
         status: record.status,

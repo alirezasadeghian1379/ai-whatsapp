@@ -1,6 +1,7 @@
 <script setup lang="ts">
-definePageMeta({layout: "auth"});
+definePageMeta({layout: "auth", middleware: "guest"});
 const {tr} = useAppPreferences(), route = useRoute();
+const {error: showError} = useAppAlert();
 const form = reactive({identity: "", password: "", remember: false});
 const pending = ref(false), error = ref("");
 
@@ -13,6 +14,7 @@ async function submit() {
     await navigateTo(requested || (["ADMIN", "SUPER_ADMIN"].includes(user.role) ? "/admin" : "/dashboard"))
   } catch (e: any) {
     error.value = e?.data?.statusMessage || tr("ورود ناموفق بود.", "Sign in failed.")
+    showError(error.value)
   } finally {
     pending.value = false
   }
@@ -24,7 +26,6 @@ async function submit() {
     <h1 class="mt-4 text-3xl font-black">{{ tr('خوش آمدید 👋', 'Welcome back 👋') }}</h1>
     <p class="muted mt-2 mb-8">
       {{ tr('برای ادامه وارد حساب همراه‌چت شوید.', 'Sign in to continue to Hamrah Chat.') }}</p>
-    <div v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{{ error }}</div>
     <div class="mb-4"><label class="label"
                              for="identity">{{ tr('ایمیل یا شماره موبایل', 'Email or phone') }}</label><input
         id="identity" v-model="form.identity" class="input" required autocomplete="username"

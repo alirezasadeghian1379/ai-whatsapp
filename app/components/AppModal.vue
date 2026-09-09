@@ -8,7 +8,7 @@ defineEmits<{ close: [] }>()</script>
                 leave-to-class="opacity-0">
       <div v-if="open" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"
            @click.self="$emit('close')">
-        <div class="surface w-full max-w-lg animate-fade-up p-5">
+        <div class="surface max-h-[calc(100dvh-2rem)] w-full max-w-lg animate-fade-up overflow-y-auto p-5">
           <header class="mb-5 flex items-center justify-between"><h2 class="text-lg font-black">{{ title }}</h2>
             <button class="icon-btn" @click="$emit('close')">
               <X :size="18"/>

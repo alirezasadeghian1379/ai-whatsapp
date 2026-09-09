@@ -1,4 +1,4 @@
-<script setup lang="ts">definePageMeta({layout: "auth"});
+<script setup lang="ts">definePageMeta({layout: "auth", middleware: "guest"});
 const {tr} = useAppPreferences();
 const email = ref(""), sent = ref(false), busy = ref(false), error = ref("");
 

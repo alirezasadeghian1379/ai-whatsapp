@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {LoaderCircle, Plus, WalletCards} from "lucide-vue-next";
 
-definePageMeta({layout: "dashboard", middleware: "auth"});
+definePageMeta({layout: "dashboard", middleware: ["auth", "dashboard-disabled"]});
 const {tr, formatDate, formatNumber} = useAppPreferences();
 const {data} = await useFetch<any>("/api/wallet");
 const show = ref(false), busy = ref(false), error = ref(""), amount = ref(100000), provider = ref("zarinpal");

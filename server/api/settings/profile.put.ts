@@ -8,8 +8,12 @@ const schema = z.object({
     email: z.string().email().max(254),
     phone: z.string().trim().regex(/^\+?\d{7,15}$/).nullable(),
     company: z.string().trim().max(100).nullable(),
-    notifications: z.record(z.string(), z.boolean()).default({}),
-    currentPassword: z.string().min(8).max(72).optional()
+    notifications: z.object({
+        message: z.boolean().optional(),
+        disconnect: z.boolean().optional(),
+        subscription: z.boolean().optional()
+    }).default({}),
+    currentPassword: z.preprocess(value => typeof value === "string" && !value.trim() ? undefined : value, z.string().min(8).max(72).optional())
 });
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), userId = String(auth.sub),

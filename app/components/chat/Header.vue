@@ -1,11 +1,11 @@
-<script setup lang="ts">import {Archive, ArchiveRestore, Pin} from "lucide-vue-next";
+<script setup lang="ts">import {Archive, ArchiveRestore, ChevronRight, Pin} from "lucide-vue-next";
 import type {ChatDetail} from "~/types/chat";
 
 defineProps<{ conversation: ChatDetail; busy: boolean }>();
-defineEmits<{ pin: []; archive: [] }>();
+defineEmits<{ pin: []; archive: []; back: [] }>();
 const {tr} = useAppPreferences();</script>
 <template>
-  <header class="flex items-center gap-3 border-b p-4"><span
+  <header class="flex items-center gap-3 border-b p-4"><button class="icon-btn lg:hidden" :title="tr('بازگشت به فهرست گفتگوها','Back to conversations')" @click="$emit('back')"><ChevronRight :size="18"/></button><span
       class="grid size-10 place-items-center rounded-full bg-brand-100 font-black">{{ (conversation.contact.name || conversation.contact.phone)[0] }}</span>
     <div class="min-w-0"><b
         class="block truncate text-sm">{{ conversation.contact.name || conversation.contact.phone }}</b><small

@@ -105,9 +105,10 @@ const plans = computed(() => (plansData.value?.plans || []).map((plan: any) => (
                 <Play :size="17"/>
                 {{ tr('نحوه کار', 'How it works') }}</a></div>
             <div class="mt-10 grid max-w-xl grid-cols-3 gap-3 border-t pt-6">
-              <div v-for="stat in stats" :key="stat.label"><b
-                  class="block text-xl font-black">{{ formatNumber(stat.value) }}</b><small
-                  class="text-slate-400">{{ stat.label }}</small></div>
+              <div v-for="stat in stats" :key="stat.label" class="flex justify-center items-center gap-[5px] flex-col">
+                <b class="block text-xl font-black">{{ formatNumber(stat.value) }}</b>
+                <small class="text-slate-400">{{ stat.label }}</small>
+              </div>
             </div>
           </div>
           <div class="relative animate-float">
@@ -117,10 +118,11 @@ const plans = computed(() => (plansData.value?.plans || []).map((plan: any) => (
                   <div><p class="font-black">{{ tr('عملکرد واقعی سامانه', 'Live platform activity') }}</p><small
                       class="text-slate-400">{{ tr('برگرفته از داده‌های جاری', 'Based on current data') }}</small></div>
                   <span class="badge bg-brand-100 text-brand-700">● {{ tr('آنلاین', 'Online') }}</span></div>
-                <div class="mt-6 grid grid-cols-3 gap-3">
-                  <div v-for="stat in stats" :key="stat.label" class="surface p-4"><small
-                      class="text-slate-400">{{ stat.label }}</small><b
-                      class="mt-2 block text-xl">{{ formatNumber(stat.value) }}</b></div>
+                <div class="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div v-for="stat in stats" :key="stat.label" class="surface p-4">
+                    <small class="text-slate-400 text-[12px] sm:text-[14px]">{{ stat.label }}</small>
+                    <b class="mt-2 block text-[14px] sm:text-[16px]">{{ formatNumber(stat.value) }}</b>
+                  </div>
                 </div>
                 <div class="surface mt-3 h-48 p-5">
                   <div class="flex h-full items-end gap-3"><i v-for="height in [35,62,48,80,57,95,73,88]" :key="height"
@@ -139,7 +141,7 @@ const plans = computed(() => (plansData.value?.plans || []).map((plan: any) => (
             <h2 class="mt-4 text-3xl font-black sm:text-4xl">
               {{ tr('همه ابزارهای ارتباط با مشتری، یک‌جا', 'Every customer communication tool in one place') }}</h2>
           </div>
-          <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="mt-12 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <article v-for="(feature,index) in features" :key="feature.en" class="surface card-hover p-6"
                      :style="{animationDelay:index*100+'ms'}"><span
                 class="grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10"><component

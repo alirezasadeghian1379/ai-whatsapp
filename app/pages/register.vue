@@ -1,6 +1,7 @@
 <script setup lang="ts">
-definePageMeta({layout: "auth"});
+definePageMeta({layout: "auth", middleware: "guest"});
 const {tr} = useAppPreferences();
+const {error: showError} = useAppAlert();
 const form = reactive({name: "", email: "", phone: "", password: ""});
 const pending = ref(false), error = ref("");
 
@@ -12,6 +13,7 @@ async function submit() {
     await navigateTo("/dashboard")
   } catch (e: any) {
     error.value = e?.data?.statusMessage || tr("ثبت‌نام انجام نشد.", "Registration failed.")
+    showError(error.value)
   } finally {
     pending.value = false
   }
@@ -22,7 +24,6 @@ async function submit() {
       class="badge bg-brand-50 text-brand-700">{{ tr('۱۴ روز رایگان', '14 days free') }}</span>
     <h1 class="mt-4 text-3xl font-black">{{ tr('ساخت حساب جدید', 'Create your account') }}</h1>
     <p class="muted mt-2 mb-7">{{ tr('بدون نیاز به کارت بانکی شروع کنید.', 'Start without a credit card.') }}</p>
-    <div v-if="error" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{{ error }}</div>
     <div class="grid gap-4 sm:grid-cols-2">
       <div><label class="label">{{ tr('نام و نام خانوادگی', 'Full name') }}</label><input v-model="form.name"
                                                                                           class="input" required

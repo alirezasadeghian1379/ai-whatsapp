@@ -2,7 +2,7 @@
 import {Plus} from "lucide-vue-next";
 import type {WebhookDelivery, WebhookForm, WebhookItem} from "~/types/webhook";
 
-definePageMeta({layout: "dashboard", middleware: "auth"});
+definePageMeta({layout: "dashboard", middleware: ["auth", "dashboard-disabled"]});
 const {tr} = useAppPreferences();
 const {data, status, refresh} = await useFetch<{ webhooks: WebhookItem[] }>("/api/webhooks");
 const hooks = computed(() => data.value?.webhooks || []);

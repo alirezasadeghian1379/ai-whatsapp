@@ -2,12 +2,15 @@ import {z} from "zod";
 import {getPaymentProvider} from "../../services/providers";
 import {requireSession} from "../../utils/auth";
 import {db} from "../../utils/db";
+import {assertUserModuleEnabled} from "../../utils/user-modules";
 
 const schema = z.object({
     amount: z.coerce.number().int().min(10_000).max(100_000_000)
 });
 export default defineEventHandler(async event => {
-    const auth = await requireSession(event), p = schema.safeParse(await readBody(event));
+    const auth = await requireSession(event);
+    assertUserModuleEnabled("wallet");
+    const p = schema.safeParse(await readBody(event));
     if (!p.success) throw createError({
         statusCode: 422,
         statusMessage: "مبلغ شارژ باید بین ۱۰ هزار تا ۱۰۰ میلیون تومان باشد."

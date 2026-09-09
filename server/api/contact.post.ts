@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {sendContactEmail} from "../services/mail";
 import {db} from "../utils/db";
+import {assertRateLimit} from "../utils/rate-limit";
 
 const schema = z.object({
     name: z.string().trim().min(2).max(80),
@@ -9,6 +10,7 @@ const schema = z.object({
     message: z.string().trim().min(10).max(4000)
 });
 export default defineEventHandler(async event => {
+    assertRateLimit(event, "contact-form", {limit: 5, windowMs: 60 * 60_000});
     const parsed = schema.safeParse(await readBody(event));
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "اطلاعات فرم تماس کامل یا معتبر نیست."});
     await sendContactEmail(parsed.data);

@@ -1,6 +1,7 @@
 import {requireSession} from "../utils/auth";
 import {db} from "../utils/db";
 import {getPlanAccess} from "../utils/plan";
+import {publicWhatsAppSession} from "../utils/whatsapp";
 
 export default defineEventHandler(async (event) => {
     const auth = await requireSession(event), userId = String(auth.sub), start = new Date();
@@ -31,7 +32,10 @@ export default defineEventHandler(async (event) => {
             total: sessions.length,
             connected: sessions.filter(x => x.status === "CONNECTED").length,
             limit: subscription?.plan.maxWhatsAppConnections || 0,
-            primary: sessions.find(x => x.status === "CONNECTED") || sessions[0] || null
+            primary: (() => {
+                const primary = sessions.find(x => x.status === "CONNECTED") || sessions[0];
+                return primary ? publicWhatsAppSession(primary) : null;
+            })()
         },
         messages: {today, monthly},
         conversations,

@@ -1,4 +1,4 @@
-<script setup lang="ts">definePageMeta({layout: "auth"});
+<script setup lang="ts">definePageMeta({layout: "auth", middleware: "guest"});
 const {tr} = useAppPreferences(), route = useRoute();
 const form = reactive({password: "", confirmPassword: ""}), busy = ref(false), done = ref(false), error = ref("");
 

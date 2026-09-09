@@ -19,19 +19,19 @@ export default defineEventHandler(async event => {
     const tokenHash = createHash("sha256").update(p.data.token).digest("hex"),
         record = await db.passwordResetToken.findFirst({where: {tokenHash, usedAt: null, expiresAt: {gt: new Date()}}});
     if (!record) throw createError({statusCode: 400, statusMessage: "لینک بازیابی نامعتبر یا منقضی شده است."});
-    await db.$transaction([db.user.update({
-        where: {id: record.userId},
-        data: {passwordHash: await hash(p.data.password, 12), sessionVersion: {increment: 1}}
-    }), db.passwordResetToken.update({
-        where: {id: record.id},
-        data: {usedAt: new Date()}
-    }), db.auditLog.create({
-        data: {
-            userId: record.userId,
-            action: "auth.password.reset",
-            entity: "User",
-            entityId: record.userId
-        }
-    })]);
+    const passwordHash = await hash(p.data.password, 12), now = new Date();
+    const completed = await db.$transaction(async tx => {
+        const claimed = await tx.passwordResetToken.updateMany({
+            where: {id: record.id, usedAt: null, expiresAt: {gt: now}},
+            data: {usedAt: now}
+        });
+        if (claimed.count !== 1) return false;
+        await tx.user.update({where: {id: record.userId}, data: {passwordHash, sessionVersion: {increment: 1}}});
+        await tx.auditLog.create({
+            data: {userId: record.userId, action: "auth.password.reset", entity: "User", entityId: record.userId}
+        });
+        return true;
+    });
+    if (!completed) throw createError({statusCode: 400, statusMessage: "لینک بازیابی نامعتبر یا منقضی شده است."});
     return {success: true}
 });
