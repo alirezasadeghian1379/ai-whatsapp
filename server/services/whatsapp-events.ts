@@ -18,7 +18,10 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
     if (!input.remoteJid || input.remoteJid.endsWith("@g.us") || input.remoteJid === "status@broadcast") return;
     const session = await db.whatsAppSession.findUnique({where: {externalId: input.externalId}});
     if (!session) return;
-    const phone = (input.remoteJid.split("@")[0] || "").replace(/\D/g, "");
+    // WhatsApp JIDs may carry a device/agent suffix (e.g. 98912...:81@s.whatsapp.net).
+    // Strip both the "@server" part and the ":device" part before extracting digits,
+    // otherwise the device number gets concatenated onto the phone number.
+    const phone = ((input.remoteJid.split("@")[0] || "").split(":")[0] || "").replace(/\D/g, "");
     if (!phone || !input.body.trim()) return;
     const at = input.timestamp ? new Date(input.timestamp * 1000) : new Date();
     if (input.originalJid?.endsWith("@lid") && input.originalJid !== input.remoteJid) {
@@ -77,13 +80,22 @@ export async function recordWhatsAppMessage(input: IncomingWhatsAppMessage) {
             contact: {id: contact.id, phone, name: contact.name},
             body: input.body
         });
-        void runAutoReply({
-            userId: session.userId,
-            sessionExternalId: session.externalId,
-            conversationId: conversation.id,
-            phone,
-            message: input.body
+        // Guard against infinite AI auto-reply loops: if the sender is one of the
+        // user's own connected WhatsApp numbers (e.g. two test lines chatting with
+        // each other), never let the bot reply to itself.
+        const ownSession = await db.whatsAppSession.findFirst({
+            where: {userId: session.userId, phoneNumber: phone},
+            select: {id: true}
         });
+        if (!ownSession) {
+            void runAutoReply({
+                userId: session.userId,
+                sessionExternalId: session.externalId,
+                conversationId: conversation.id,
+                phone,
+                message: input.body
+            });
+        }
     }
     return {message: saved, conversation, contact};
 }

@@ -3,10 +3,13 @@ import {AlertCircle, Bot, KeyRound, LoaderCircle, Play, Save, Sparkles} from "lu
 
 definePageMeta({layout: "dashboard", middleware: "auth"});
 const {tr} = useAppPreferences();
-const {data, status, refresh} = await useFetch<any>("/api/ai/config");
+const route = useRoute();
+const selectedSessionId = ref<string>((route.query.sessionId as string) || "");
+const {data, status, refresh} = await useFetch<any>(() => `/api/ai/config${selectedSessionId.value ? `?sessionId=${selectedSessionId.value}` : ''}`);
 const saved = ref(false), busy = ref(false), result = ref(""), error = ref(""),
     testMessage = ref("سلام، چطور می‌توانم وضعیت سفارشم را ببینم؟");
 const form = reactive({
+  sessionId: null as string | null,
   isEnabled: false,
   provider: "groq",
   model: "openai/gpt-oss-20b",
@@ -29,6 +32,7 @@ const hasGroqKey = computed(() => data.value?.config?.provider === "groq" && Boo
 watchEffect(() => {
   const c = data.value?.config;
   if (c) Object.assign(form, {
+    sessionId: selectedSessionId.value || null,
     isEnabled: c.isEnabled,
     provider: "groq",
     model: modelOptions.some(item => item.value === c.model) ? c.model : modelOptions[0]!.value,
@@ -42,13 +46,22 @@ watchEffect(() => {
     voiceModel: c.voiceModel || "edge-tts/fa-IR-DilaraNeural",
     apiKey: ""
   })
+  else Object.assign(form, {
+    sessionId: selectedSessionId.value || null,
+    isEnabled: false,
+    apiKey: ""
+  })
+});
+
+watch(selectedSessionId, () => {
+  void refresh();
 });
 
 async function save() {
   busy.value = true;
   error.value = "";
   try {
-    await $fetch("/api/ai/config", {method: "PUT", body: {...form, apiKey: form.apiKey || undefined}});
+    await $fetch("/api/ai/config", {method: "PUT", body: {...form, sessionId: selectedSessionId.value || null, apiKey: form.apiKey || undefined}});
     form.apiKey = "";
     saved.value = true;
     await refresh();
@@ -90,6 +103,17 @@ async function test() {
     <UiLoadingState v-if="status==='pending'" class="surface" height="h-60"/>
     <div v-else class="grid gap-5 xl:grid-cols-[1.3fr_.7fr]">
       <section class="surface space-y-6 p-6">
+        <div class="rounded-2xl border bg-slate-50/70 p-4 dark:bg-slate-800/40">
+          <label class="block">
+            <span class="label font-bold">{{ tr('انتخاب اکانت واتساپ جهت تنظیم هوش مصنوعی', 'Select WhatsApp account for AI') }}</span>
+            <select v-model="selectedSessionId" class="input mt-1">
+              <option value="">{{ tr('تنظیمات عمومی (پیش‌فرض تمام خطوط)', 'General settings (default for all numbers)') }}</option>
+              <option v-for="s in data?.sessions || []" :key="s.id" :value="s.id">
+                {{ s.displayName || tr('واتساپ', 'WhatsApp') }} ({{ s.phoneNumber ? '+' + s.phoneNumber : s.status }})
+              </option>
+            </select>
+          </label>
+        </div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3"><span
               class="grid size-11 place-items-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/10"><Bot/></span>

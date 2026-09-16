@@ -5,6 +5,7 @@ import {db} from "../../utils/db";
 import {assertPlanFeature} from "../../utils/plan";
 
 const schema = z.object({
+    sessionId: z.string().trim().nullable().optional(),
     provider: z.literal("groq"),
     model: z.enum(["openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound-mini"]),
     apiKey: z.string().trim().optional(),
@@ -23,17 +24,37 @@ export default defineEventHandler(async (event) => {
         parsed = schema.safeParse(await readBody(event));
     await assertPlanFeature(userId, "ai");
     if (!parsed.success) throw createError({statusCode: 422, statusMessage: "تنظیمات AI معتبر نیست."});
-    const existing = await db.aIConfiguration.findFirst({where: {userId}});
-    const {apiKey, ...values} = parsed.data;
-    if (!existing && !apiKey) throw createError({statusCode: 422, statusMessage: "API Key را وارد کنید."});
+    
+    const sessionId = parsed.data.sessionId || null;
+    if (sessionId) {
+        const session = await db.whatsAppSession.findFirst({where: {id: sessionId, userId}});
+        if (!session) throw createError({statusCode: 404, statusMessage: "اتصال واتساپ یافت نشد."});
+    }
+
+    const existing = await db.aIConfiguration.findFirst({
+        where: sessionId ? { userId, sessionId } : { userId, sessionId: null }
+    });
+
+    const {apiKey, sessionId: _, ...values} = parsed.data;
+    let apiKeyEncryptedToSave: string | undefined = apiKey ? encryptSecret(apiKey) : undefined;
+    if (!existing && !apiKey) {
+        // If it's a specific session and no API key is provided, try to copy key from general user config
+        const generalConfig = await db.aIConfiguration.findFirst({where: {userId, sessionId: null}});
+        if (generalConfig?.apiKeyEncrypted) {
+            apiKeyEncryptedToSave = generalConfig.apiKeyEncrypted;
+        } else {
+            throw createError({statusCode: 422, statusMessage: "API Key را وارد کنید."});
+        }
+    }
     if (existing && existing.provider !== parsed.data.provider && !apiKey) throw createError({
         statusCode: 422,
         statusMessage: "برای ارائه‌دهنده جدید، API Key همان سرویس را وارد کنید."
     });
-    const data = {...values, ...(apiKey ? {apiKeyEncrypted: encryptSecret(apiKey)} : {})};
+    
+    const data: any = {...values, ...(apiKeyEncryptedToSave ? {apiKeyEncrypted: apiKeyEncryptedToSave} : {})};
     const config = existing ? await db.aIConfiguration.update({
         where: {id: existing.id},
         data
-    }) : await db.aIConfiguration.create({data: {userId, ...data}});
+    }) : await db.aIConfiguration.create({data: {userId, sessionId, ...data}});
     return {config: {...config, apiKeyEncrypted: undefined, hasApiKey: !!config.apiKeyEncrypted}};
 });

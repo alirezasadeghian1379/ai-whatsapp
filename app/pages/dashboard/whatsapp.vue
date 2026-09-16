@@ -13,7 +13,34 @@ const sessions = ref<WhatsAppSession[]>([]), pending = ref(true), showCreate = r
     activeId = ref<string | null>(null), destination = ref(""), messageBody = ref(""), notice = ref(""),
     actionError = ref("")
 let refreshTimer: ReturnType<typeof setInterval> | undefined
+let qrPollTimer: ReturnType<typeof setInterval> | undefined
 const apiError = (e: any) => e?.data?.statusMessage || e?.data?.message || e?.message || tr("عملیات انجام نشد.", "The operation failed.")
+
+function stopQrPolling() {
+  if (qrPollTimer) {
+    clearInterval(qrPollTimer)
+    qrPollTimer = undefined
+  }
+}
+
+function startQrPolling() {
+  stopQrPolling()
+  qrPollTimer = setInterval(async () => {
+    if (!activeId.value || !showQr.value) return stopQrPolling()
+    try {
+      const r = await $fetch<{ qr: string | null; status: string }>(`/api/whatsapp/sessions/${activeId.value}/qr`)
+      if (r.qr) qrImage.value = r.qr
+      if (r.status === "CONNECTED") {
+        showQr.value = false
+        notice.value = tr("واتساپ با موفقیت متصل شد.", "WhatsApp connected successfully.")
+        stopQrPolling()
+        await loadSessions()
+      }
+    } catch {
+      // keep polling silently; transient errors should not close the dialog
+    }
+  }, 3000)
+}
 
 function resetFeedback() {
   notice.value = "";
@@ -43,6 +70,7 @@ async function createConnection() {
     activeId.value = r.session.id;
     qrImage.value = r.qr;
     showQr.value = true;
+    startQrPolling();
     notice.value = tr("اتصال ساخته شد؛ کد را با واتساپ اسکن کنید.", "Connection created. Scan the code with WhatsApp.");
     await loadSessions()
   } catch (e) {
@@ -61,6 +89,7 @@ async function openQr(id: string) {
   try {
     const r = await $fetch<{ qr: string | null; status: string }>(`/api/whatsapp/sessions/${id}/qr`);
     qrImage.value = r.qr;
+    startQrPolling();
     if (!r.qr && r.status === "CONNECTED") notice.value = tr("این شماره هم‌اکنون متصل است.", "This number is already connected."); else if (!r.qr) actionError.value = tr("هنوز QR تولید نشده؛ چند ثانیه دیگر تلاش کنید.", "QR is not ready yet. Try again shortly.");
     await loadSessions()
   } catch (e) {
@@ -129,7 +158,10 @@ onMounted(() => {
   void loadSessions(true);
   refreshTimer = setInterval(() => void loadSessions(), 12000)
 })
-onBeforeUnmount(() => clearInterval(refreshTimer))
+onBeforeUnmount(() => {
+  clearInterval(refreshTimer)
+  stopQrPolling()
+})
 </script>
 <template>
   <div>

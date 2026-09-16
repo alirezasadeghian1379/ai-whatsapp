@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {QrCode, Send, Smartphone, Trash2, Unplug} from "lucide-vue-next"
+import {Bot, QrCode, Send, Smartphone, Trash2, Unplug} from "lucide-vue-next"
 import type {WhatsAppSession} from "~/types/whatsapp"
 import WhatsAppStatusBadge from "./StatusBadge.vue"
 
@@ -46,6 +46,10 @@ const {tr} = useAppPreferences()
         <Unplug :size="17"/>
         {{ tr('قطع اتصال', 'Disconnect') }}
       </button>
+      <NuxtLink :to="`/dashboard/ai?sessionId=${session.id}`" class="btn btn-secondary text-violet-600 hover:text-violet-700 dark:text-violet-400">
+        <Bot :size="17"/>
+        {{ tr('هوش مصنوعی', 'AI Assistant') }}
+      </NuxtLink>
       <button type="button"
               class="btn ms-auto border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10"
               :disabled="busy" @click="$emit('remove',session.id)">

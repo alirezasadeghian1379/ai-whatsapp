@@ -66,19 +66,57 @@ export async function runAutoReply(input: {
     } catch {
         return;
     }
-    const config = await db.aIConfiguration.findFirst({
+
+    // First find the WhatsApp session
+    const session = await db.whatsAppSession.findUnique({
+        where: { externalId: input.sessionExternalId }
+    });
+
+    // 1. Try to find session-specific AI configuration
+    let config = session ? await db.aIConfiguration.findFirst({
         where: {
             userId: input.userId,
+            sessionId: session.id,
             isEnabled: true,
             autoReply: true
         }
-    });
-    // Legacy OpenAI configurations are intentionally disabled. The user must
-    // save a Groq configuration and API key before automatic replies resume.
+    }) : null;
+
+    // 2. Fallback to user-level general configuration if session config is not present/enabled
+    if (!config) {
+        config = await db.aIConfiguration.findFirst({
+            where: {
+                userId: input.userId,
+                sessionId: null,
+                isEnabled: true,
+                autoReply: true
+            }
+        });
+    }
+
     if (!config?.apiKeyEncrypted || config.provider !== "groq") return;
     if (config.delaySeconds) await new Promise(resolve => setTimeout(resolve, Math.min(config.delaySeconds, 30) * 1000));
+
+    // Fetch conversation history for better AI context
+    const recentMessages = await db.message.findMany({
+        where: { conversationId: input.conversationId },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: { direction: true, body: true }
+    });
+
+    let contextHistoryPrompt = "";
+    if (recentMessages.length > 1) {
+        const historyText = recentMessages
+            .reverse()
+            .filter(m => m.body && m.body.trim())
+            .map(m => `${m.direction === "INBOUND" ? "مشتری" : "پشتیبان"}: ${m.body}`)
+            .join("\n");
+        contextHistoryPrompt = `\n\n[تاریخچه آخرین پیام‌های گفتگو]:\n${historyText}\nپاسخ پیام آخر مشتری را بدهید.`;
+    }
+
     const completion = await getAIProvider(config.provider, decryptSecret(config.apiKeyEncrypted), config.model).complete({
-        systemPrompt: config.systemPrompt,
+        systemPrompt: config.systemPrompt + contextHistoryPrompt,
         message: input.message,
         temperature: config.temperature,
         maxTokens: config.maxTokens

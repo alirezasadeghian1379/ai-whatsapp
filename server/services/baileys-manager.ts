@@ -7,7 +7,8 @@ import makeWASocket, {
     type WASocket,
     type WAMessage
 } from "@whiskeysockets/baileys";
-import {mkdir, rename, rm, writeFile} from "node:fs/promises";
+import {existsSync} from "node:fs";
+import {mkdir, readFile, rename, rm, writeFile} from "node:fs/promises";
 import {join, resolve} from "node:path";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -43,34 +44,67 @@ function proxyAgent() {
     return protocol.startsWith("socks") ? new SocksProxyAgent(url) : new HttpsProxyAgent(url);
 }
 
-function textOf(message: WAMessage["message"]): string | null {
-    if (!message) return null;
-    const inner = message.ephemeralMessage?.message || message.viewOnceMessage?.message || message;
-    return inner?.conversation ?? inner?.extendedTextMessage?.text ?? inner?.imageMessage?.caption ?? inner?.videoMessage?.caption ?? null;
+function unwrapMessage(msg: WAMessage["message"]): any {
+    if (!msg) return null;
+    let current: any = msg;
+    while (
+        current?.ephemeralMessage?.message ||
+        current?.viewOnceMessage?.message ||
+        current?.viewOnceMessageV2?.message ||
+        current?.viewOnceMessageV2Extension?.message ||
+        current?.documentWithCaptionMessage?.message
+    ) {
+        current =
+            current.ephemeralMessage?.message ||
+            current.viewOnceMessage?.message ||
+            current.viewOnceMessageV2?.message ||
+            current.viewOnceMessageV2Extension?.message ||
+            current.documentWithCaptionMessage?.message;
+    }
+    return current;
 }
 
-function messageContent(message: WAMessage["message"]) {
-    return message?.ephemeralMessage?.message || message?.viewOnceMessage?.message || message;
+function textOf(rawMessage: WAMessage["message"]): string | null {
+    const msg = unwrapMessage(rawMessage);
+    if (!msg) return null;
+    return (
+        msg.conversation ??
+        msg.extendedTextMessage?.text ??
+        msg.imageMessage?.caption ??
+        msg.videoMessage?.caption ??
+        msg.documentMessage?.caption ??
+        msg.buttonsResponseMessage?.selectedDisplayText ??
+        msg.templateButtonReplyMessage?.selectedDisplayText ??
+        msg.listResponseMessage?.title ??
+        (msg.audioMessage ? "پیام صوتی" : null) ??
+        (msg.stickerMessage ? "استیکر" : null) ??
+        (msg.locationMessage ? "موقعیت مکانی" : null) ??
+        (msg.contactMessage ? "مخاطب" : null) ??
+        null
+    );
 }
 
 async function saveIncomingMedia(message: WAMessage) {
-    const content = messageContent(message.message);
+    const content = unwrapMessage(message.message);
     const image = content?.imageMessage;
     const document = content?.documentMessage;
-    const media = image || document;
+    const audio = content?.audioMessage;
+    const media = image || document || audio;
     if (!media) return null;
     const size = Number(media.fileLength || 0);
     if (size > 10 * 1024 * 1024) return null;
-    const mime = media.mimetype || (image ? "image/jpeg" : "application/octet-stream");
+    const mime = media.mimetype || (image ? "image/jpeg" : audio ? "audio/ogg" : "application/octet-stream");
     const extensions: Record<string, string> = {
         "image/jpeg": ".jpg",
         "image/png": ".png",
         "image/webp": ".webp",
         "application/pdf": ".pdf",
-        "text/plain": ".txt"
+        "text/plain": ".txt",
+        "audio/ogg": ".ogg",
+        "audio/ogg; codecs=opus": ".ogg",
+        "audio/mp4": ".m4a"
     };
-    const extension = extensions[mime];
-    if (!extension) return null;
+    const extension = extensions[mime] || (image ? ".jpg" : audio ? ".ogg" : ".bin");
     const data = await downloadMediaMessage(message, "buffer", {});
     if (data.length > 10 * 1024 * 1024) return null;
     const storedName = `${crypto.randomUUID()}${extension}`;
@@ -80,7 +114,7 @@ async function saveIncomingMedia(message: WAMessage) {
     return {
         type: image ? "image" as const : "document" as const,
         mediaUrl: storedName,
-        body: image?.caption || document?.caption || document?.fileName || (image ? "تصویر" : "فایل پیوست")
+        body: image?.caption || document?.caption || document?.fileName || (image ? "تصویر" : audio ? "پیام صوتی" : "فایل پیوست")
     };
 }
 
@@ -123,8 +157,25 @@ async function updateConnection(instanceName: string, state: string, phone?: str
     }
 }
 
+async function cleanStaleAuthDirectory(targetDir: string) {
+    try {
+        const credsPath = join(targetDir, "creds.json");
+        if (existsSync(credsPath)) {
+            const raw = await readFile(credsPath, "utf8");
+            const parsed = JSON.parse(raw);
+            if (parsed.registered === false && parsed.me) {
+                await rm(targetDir, {recursive: true, force: true});
+            }
+        }
+    } catch {
+        // ignore cleanup error
+    }
+}
+
 async function boot(instanceName: string, runtime: Runtime) {
-    const {state, saveCreds} = await useMultiFileAuthState(join(storageRoot, safeName(instanceName)));
+    const authDir = join(storageRoot, safeName(instanceName));
+    await cleanStaleAuthDirectory(authDir);
+    const {state, saveCreds} = await useMultiFileAuthState(authDir);
     const agent = proxyAgent();
     const socket = makeWASocket({
         auth: state,
@@ -153,9 +204,10 @@ async function boot(instanceName: string, runtime: Runtime) {
         }
         if (update.connection === "close") {
             const code = (update.lastDisconnect?.error as any)?.output?.statusCode;
-            await updateConnection(instanceName, "close", undefined, code === DisconnectReason.loggedOut);
+            const isDeadSession = code === DisconnectReason.loggedOut || code === DisconnectReason.connectionReplaced || code === 401 || code === 440;
+            await updateConnection(instanceName, "close", undefined, isDeadSession);
             if (runtime.socket !== socket) return;
-            if (code === DisconnectReason.loggedOut && !runtime.recoveringLoggedOut) {
+            if (isDeadSession && !runtime.recoveringLoggedOut) {
                 runtime.recoveringLoggedOut = true;
                 const authDirectory = resolve(storageRoot, safeName(instanceName));
                 const backupDirectory = resolve(storageRoot, `${safeName(instanceName)}-logged-out-${Date.now()}`);
@@ -164,9 +216,11 @@ async function boot(instanceName: string, runtime: Runtime) {
                 }
                 runtime.reconnectTimer = setTimeout(() => {
                     runtime.reconnectTimer = undefined;
-                    if (runtime.socket === socket) void startBaileysSession(instanceName, true);
+                    if (runtime.socket === socket) {
+                        runtime.socket = undefined;
+                    }
                 }, 1_000);
-            } else if (code !== DisconnectReason.loggedOut) {
+            } else if (!isDeadSession) {
                 clearTimeout(runtime.reconnectTimer);
                 runtime.reconnectAttempts += 1;
                 const delay = Math.min(60_000, 2_000 * 2 ** Math.min(runtime.reconnectAttempts - 1, 5));
@@ -177,27 +231,39 @@ async function boot(instanceName: string, runtime: Runtime) {
             }
         }
     });
-    socket.ev.on("messages.upsert", async ({messages, type}) => {
-        if (type !== "notify") return;
+    socket.ev.on("messages.upsert", async ({messages}) => {
         const {recordWhatsAppMessage} = await import("./whatsapp-events");
         for (const message of messages) {
+            const originalJid = message.key.remoteJid;
+            if (!originalJid || originalJid === "status@broadcast" || originalJid.endsWith("@g.us")) continue;
+            if (!message.message) continue;
+
+            const content = unwrapMessage(message.message);
+            if (content?.protocolMessage || content?.reactionMessage || content?.pollUpdateMessage) continue;
+
             const media = await saveIncomingMedia(message).catch(() => null);
             const body = textOf(message.message) || media?.body;
-            const originalJid = message.key.remoteJid;
             let remoteJid = message.key.remoteJidAlt || originalJid;
-            if (remoteJid?.endsWith("@lid")) remoteJid = await socket.signalRepository.lidMapping.getPNForLID(remoteJid) || remoteJid;
-            if (body && remoteJid) await recordWhatsAppMessage({
-                externalId: instanceName,
-                messageId: message.key.id,
-                remoteJid,
-                originalJid: originalJid || undefined,
-                fromMe: !!message.key.fromMe,
-                pushName: message.pushName,
-                body,
-                type: media?.type,
-                mediaUrl: media?.mediaUrl,
-                timestamp: Number(message.messageTimestamp || 0) || undefined
-            });
+            if (remoteJid?.endsWith("@lid") && socket.signalRepository?.lidMapping?.getPNForLID) {
+                const pn = await socket.signalRepository.lidMapping.getPNForLID(remoteJid).catch(() => null);
+                if (pn) remoteJid = pn;
+            }
+            if (body && remoteJid) {
+                await recordWhatsAppMessage({
+                    externalId: instanceName,
+                    messageId: message.key.id,
+                    remoteJid,
+                    originalJid: originalJid || undefined,
+                    fromMe: !!message.key.fromMe,
+                    pushName: message.pushName,
+                    body,
+                    type: media?.type || "text",
+                    mediaUrl: media?.mediaUrl,
+                    timestamp: Number(message.messageTimestamp || 0) || undefined
+                }).catch(err => {
+                    console.error("[WhatsApp] Error recording message:", err);
+                });
+            }
         }
     });
     socket.ev.on("messages.update", async updates => {
@@ -232,10 +298,11 @@ async function boot(instanceName: string, runtime: Runtime) {
 }
 
 export async function startBaileysSession(instanceName: string, force = false) {
-    let runtime = runtimes.get(instanceName);
+    const name = safeName(instanceName);
+    let runtime = runtimes.get(name);
     if (!runtime) {
         runtime = {state: "connecting", qr: null, reconnectAttempts: 0};
-        runtimes.set(instanceName, runtime);
+        runtimes.set(name, runtime);
     }
     if (runtime.state === "close" && !runtime.starting) force = true;
     if (force) {
@@ -244,19 +311,32 @@ export async function startBaileysSession(instanceName: string, force = false) {
         const previousSocket = runtime.socket;
         runtime.socket = undefined;
         runtime.starting = undefined;
+        runtime.qr = null;
         previousSocket?.end(undefined);
     }
-    if (!runtime.socket && !runtime.starting) runtime.starting = boot(instanceName, runtime).finally(() => {
-        runtime!.starting = undefined;
-    });
+    if (!runtime.socket && !runtime.starting) {
+        runtime.starting = boot(name, runtime).finally(() => {
+            runtime!.starting = undefined;
+        });
+    }
     await runtime.starting;
     return runtime;
 }
 
-export async function waitForBaileysState(instanceName: string, timeout = 12_000) {
-    const runtime = await startBaileysSession(instanceName);
+export function getBaileysState(instanceName: string) {
+    const name = safeName(instanceName);
+    const runtime = runtimes.get(name);
+    if (!runtime) return "close";
+    return runtime.state;
+}
+
+export async function waitForBaileysState(instanceName: string, timeout = 12_000, forceStart = false) {
+    const name = safeName(instanceName);
+    const runtime = await startBaileysSession(name, forceStart);
     const until = Date.now() + timeout;
-    while (!runtime.qr && runtime.state !== "open" && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 200));
+    while (!runtime.qr && runtime.state !== "open" && Date.now() < until) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
     return {qr: runtime.qr, state: runtime.state};
 }
 

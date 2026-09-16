@@ -119,7 +119,7 @@ onBeforeUnmount(() => clearInterval(timer));
     </PageHeader>
     <UiFeedback v-if="error" class="mb-4" type="error" :message="error"/>
     <section class="surface grid min-h-[680px] overflow-hidden lg:grid-cols-[320px_1fr_260px]">
-      <ChatConversationList v-show="!detail" class="lg:block" v-model:search="search" :items="conversations" :selected-id="selectedId"
+      <ChatConversationList :class="detail ? 'hidden lg:block' : 'block'" v-model:search="search" :items="conversations" :selected-id="selectedId"
                             :pending="status==='pending'" :format-time="time" @select="select"/>
       <div v-if="detail" class="flex min-w-0 flex-col">
         <ChatHeader :conversation="detail" :busy="stateBusy" @back="detail=null;selectedId=null" @pin="changeState({isPinned:!detail.isPinned})"

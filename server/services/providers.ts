@@ -40,7 +40,7 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
     async getQr(instanceName: string) {
         try {
             const {waitForBaileysState} = await import("./baileys-manager");
-            return {ok: true as const, data: await waitForBaileysState(instanceName)};
+            return {ok: true as const, data: await waitForBaileysState(instanceName, 12_000, true)};
         } catch (error) {
             return {ok: false as const, error: error instanceof Error ? error.message : "QR واتساپ دریافت نشد."};
         }
@@ -48,9 +48,8 @@ export class BaileysWhatsAppProvider implements WhatsAppProvider {
 
     async getState(instanceName: string) {
         try {
-            const {waitForBaileysState} = await import("./baileys-manager");
-            const data = await waitForBaileysState(instanceName, 500);
-            return {ok: true as const, data: {state: data.state}};
+            const {getBaileysState} = await import("./baileys-manager");
+            return {ok: true as const, data: {state: getBaileysState(instanceName)}};
         } catch (error) {
             return {ok: false as const, error: error instanceof Error ? error.message : "وضعیت واتساپ دریافت نشد."};
         }
